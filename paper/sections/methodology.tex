@@ -1,0 +1,207 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Prediction target}
+\label{sec:methodology-target}
+
+The Primary Confirmatory Endpoint is Target A (Adverse Price Shift) at
+depletion threshold $X = 50\%$, forecast horizon $h = 500$\,ms, and
+buffer $\Delta = 50$\,ms: the label is positive if the best price level
+(bid for a long-side alert, ask for a short-side alert) moves adversely
+within $[t+\Delta,\ t+\Delta+h]$. The pre-registered effect-size threshold
+is $\Delta\PRAUC \ge +0.005$ over $M_1$ at $\alpha = 0.05$, fixed before
+any result was examined. A secondary/exploratory grid additionally varies
+the depletion threshold $X \in \{30\%, 50\%, 70\%\}$ and horizon
+$h \in \{100\text{ms}, 500\text{ms}, 2\text{s}\}$ (buffer fixed at 50\,ms)
+for both Target A and Target B (Pure Depth Depletion: best price
+constant, queue size drops $>X\%$ within the same window), for a nominal
+$2 \times 3 \times 3 = 18$ specifications
+(Section~\ref{sec:results-secondary-grid}).
+
+\subsection{Model ladder}
+\label{sec:methodology-ladder}
+
+Four models are compared, each nested in the features available to the
+next:
+
+\begin{itemize}[leftmargin=2em]
+\item \textbf{$M_0$ (Baseline L1 LOB):} level-1 order-flow imbalance
+  $\mathrm{OFI}_{L1}$, micro-price basis $(P_{\text{micro}} - P_{\text{mid}})$,
+  bid-ask spread, and absolute queue sizes with rolling historical
+  percentile rank $\mathrm{Rank}(Q(t)) \in [0,1]$. Omitting the percentile
+  rank term makes $M_0$ artificially weak and inflates the apparent gain
+  of every model built on top of it, so it is included by design.
+
+\item \textbf{$M_1$ (Multi-Scale EWMA Bank -- unrestricted tree learning):}
+  $M_0$ plus 10-event $\times$ 5-scale exponential event counts,
+  \[
+    Z_j^{(\beta_p)}(t) = \int_0^t e^{-\beta_p (t-s)}\,dN_j(s), \qquad
+    \beta_p \in \{0.2,\ 1.0,\ 5.0,\ 25.0,\ 100.0\}\ \mathrm{s}^{-1}, \quad
+    j \in \{1,\dots,10\},
+  \]
+  fed to an unconstrained LightGBM gradient-boosted-tree model.
+
+\item \textbf{$M_2$ (Parametric Hawkes -- inductive-bias benchmark):}
+  $M_0$ plus the MLE-fitted multivariate Hawkes intensity
+  \[
+    \boldsymbol{\lambda}(t) = \boldsymbol{\mu}(t) + \sum_{p=1}^{5} \mathbf{A}^{(p)} \mathbf{Z}^{(\beta_p)}(t),
+  \]
+  using the \emph{same} $\beta$ grid as $M_1$, fed as an additional
+  feature set to the same LightGBM architecture. As noted in
+  Section~\ref{sec:intro-structural-note}, $\boldsymbol{\lambda}(t)$ is
+  structurally a linear function of $M_1$'s own feature bank; the MLE fit
+  is unsupervised (fits event likelihood, never the forecasting target)
+  and can only impose a regularization prior over the same space, not add
+  new information.
+
+\item \textbf{$M_3$ (Structural Non-Nested Dynamics):} $M_1$ plus a rolling
+  hourly spectral radius $\rho(\boldsymbol{\Gamma}_t)$ (warm-started,
+  non-overlapping hourly refits, forward-filled onto the 1\,Hz feature
+  grid as a causal step function) and linearized trade-size marks applied
+  only to \texttt{trade\_buy}/\texttt{trade\_sell} events. Both blocks are
+  genuinely non-linear or externally-covariate-derived summaries that
+  $M_1$'s raw event-count EWMA bank does not contain in any decayed-linear
+  form, so $M_3$ is the only model in the ladder that could, structurally,
+  exceed $M_1$ for a reason other than overfitting noise. The regime
+  feature is explicitly an hourly-resolution indicator and is not expected
+  a priori to carry signal at the 500\,ms Primary Endpoint horizon.
+\end{itemize}
+
+\subsection{Hawkes MLE formulation}
+\label{sec:methodology-hawkes}
+
+The full marked, multivariate intensity used for MLE calibration is
+\[
+  \lambda_i(t) = \mu_i(t) + \sum_{j=1}^{10} \sum_{p=1}^{P}
+    \Big( \alpha_{ij}^{(p)} Z_j^{(\beta_p)}(t) + \alpha_{ij}^{\prime(p)} Z_{j,\mathrm{mark}}^{(\beta_p)}(t) \Big),
+\]
+with trade-size marks $m_k = \mathrm{Volume}_k / \mathrm{Median}(\mathrm{Volume})_{[t-1\mathrm{h},\,t]}$
+computed causally (strictly excluding event $k$ itself from its own
+normalizing median) and entering \emph{additively} rather than as a
+bilinear $(1+\gamma m)\alpha$ product, which preserves global concavity
+of the log-likelihood. The baseline intensity follows a parametric
+diurnal and asymmetric funding-jump model,
+\[
+  \mu_i(t) = \Big(a_0 + \sum_{k=1}^{8}\big(a_k\cos(\tfrac{2\pi k t_{\mathrm{sec}}}{86400}) + b_k\sin(\tfrac{2\pi k t_{\mathrm{sec}}}{86400})\big)\Big)
+  \cdot \exp\Big(\sum_{f=1}^{3}\big(\delta_{\mathrm{pre}}\mathbb{1}_{[-5\mathrm{m},0)} + \delta_{\mathrm{post}}\mathbb{1}_{[0,+5\mathrm{m}]}\big)\Big),
+\]
+with funding times $t_{\mathrm{fund}} \in \{00{:}00, 08{:}00, 16{:}00\}$
+UTC and asymmetric pre-/post-funding jump coefficients.
+
+The \emph{dimensionless branching-ratio matrix}
+\[
+  \boldsymbol{\Gamma} = \sum_{p=1}^{5} \mathbf{A}^{(p)} / \beta_p
+\]
+governs long-run stability: the process is stationary (subcritical) iff
+the spectral radius $\rho(\boldsymbol{\Gamma}) < 1$. The specification
+calls for enforcing this constraint \emph{during} MLE; the implementation
+instead runs an unconstrained per-target L-BFGS-B fit and applies a
+post-hoc uniform radial rescaling of all $\alpha$ (and $\alpha'$)
+coefficients to $\rho = 0.995$ only if the unconstrained fit exceeds that
+ceiling. This deviation from the specification was tested empirically
+across 185 fits spanning the full static $N$-grid, both tie rules, and a
+purpose-built hourly stress test, and the projection never activated in
+that scan (closest approach $\rho = 0.9875$, 0.75\% headroom); it was
+later found to activate exactly once, at $N=31$d, in one hourly window
+that coincides with the 2024-03-08 \texttt{bookTicker} gap (a known,
+already-documented data artifact, not a general large-$N$ property),
+affecting 0.116\% of that budget's training rows -- discussed further in
+Section~\ref{sec:limitations}.
+
+MLE calibration subsamples a stratified selection of events per fitting
+window rather than using the full raw event stream, for L-BFGS-B
+wall-clock tractability; the calibration budget and its sensitivity to
+sample-size scaling are examined directly in
+Section~\ref{sec:results-calibration}.
+
+\subsection{LightGBM setup}
+\label{sec:methodology-lgbm}
+
+$M_0$, $M_1$, $M_2$, and $M_3$ are all realized as LightGBM
+gradient-boosted-tree classifiers on their respective feature sets. The
+headline learning-curve results
+(Section~\ref{sec:results-learning-curve}) use a coarse, fixed
+3-bucket hyperparameter heuristic applied identically to $M_1$ and $M_2$
+at every training-sample budget $N$. A dedicated follow-up
+(Section~\ref{sec:results-tuning}) instead tunes \texttt{num\_leaves},
+\texttt{min\_data\_in\_leaf} (equivalently \texttt{feature\_fraction} and
+\texttt{lambda\_l2} in the tuned search), and related regularization
+parameters independently per $N$ and independently for $M_1$ and $M_2$,
+via a causal (time-ordered, no shuffling) train/validation split and
+random search, specifically to test whether the untuned heuristic was
+biasing the $M_1$-vs-$M_2$ comparison in either direction.
+
+\subsection{Evaluation metrics}
+\label{sec:methodology-metrics}
+
+Three metrics are reported throughout: area under the precision-recall
+curve (PR-AUC, the primary ranking-quality metric, appropriate given
+class-imbalanced positive rates), the Brier score (mean squared error
+between predicted probability and binary outcome, a calibration-sensitive
+metric), and log-loss (binary cross-entropy, also calibration-sensitive
+and the metric on which the formal Giacomini--White test is defined).
+PR-AUC and Brier/log-loss can and do disagree in this paper's results
+(Section~\ref{sec:results-m3}) -- a model can rank events no better while
+still producing better-calibrated probabilities, and the two metrics are
+not redundant.
+
+\subsection{Giacomini--White test with Newey--West HAC standard errors}
+\label{sec:methodology-gw}
+
+The formal significance test used throughout is the Giacomini--White
+\citep{giacomini2006tests} conditional predictive ability (CPA) test, run under a genuinely
+out-of-sample rolling walk-forward protocol rather than a single static
+train/test split. Concretely: (1) compute the per-event loss differential
+$d_t = L(y_t, \hat y_t^{M_a}) - L(y_t, \hat y_t^{M_b})$ (log-loss unless
+noted otherwise); (2) aggregate into 1-minute non-overlapping mean blocks
+$\bar d_\tau$; (3) run the GW CPA test on $\{\bar d_\tau\}$ with
+Newey--West/HAC standard errors; (4) re-estimate both models on a
+rolling basis -- retrain every 24 hours on the preceding trailing
+$N$-day window, forecast the next day -- so that the test's asymptotics,
+which require a genuinely out-of-sample rolling forecast sequence, are
+valid. The primary rolling GW protocol used in this paper trains on a
+trailing 7-day window, re-estimates daily, and forecasts
+2024-02-29 through 2024-03-30 (31 out-of-sample days).
+
+\subsection{Romano--Wolf stepdown FWER control}
+\label{sec:methodology-rw}
+
+Family-wise error rate across the 18-specification secondary/exploratory
+grid (Section~\ref{sec:results-secondary-grid}) is controlled via a
+Romano--Wolf stepdown bootstrap \citep{romano2005stepwise,romano2005exact},
+resampled by day-blocks to preserve
+intraday dependency structure. The Primary Endpoint
+(Section~\ref{sec:methodology-target}) is exempt from this correction --
+it is tested once, standalone, at $\alpha = 0.05$, per the pre-registered
+protocol. Both a cheaper static 7-day-test-week design (7 day-blocks) and
+the full 31-day rolling protocol (31 day-blocks, matching the primary GW
+protocol above) were run; results are reported for both, with the 31-day
+rolling version treated as the more rigorous of the two.
+
+\subsection{Difference-in-differences placebo control}
+\label{sec:methodology-placebo}
+
+A placebo design is specified for validating $M_3$'s structural claim:
+permute event-type labels $j \in \{1,\dots,10\}$ at fixed timestamps
+(preserving timing, destroying type-specific structure), and require
+that $M_3$'s \emph{advantage over} $M_1$ (not merely $M_3$'s own
+performance) collapse under scrambling, together with a secondary check
+lagging point-process feature inputs by $\tau=10$s and verifying that
+predictive advantage decays monotonically toward zero. This placebo
+control was not run in the present study (see
+Section~\ref{sec:limitations}); given the null PR-AUC result for $M_3$
+on the Primary Endpoint (Section~\ref{sec:results-m3}), the placebo test
+was judged to have little to falsify at the time and was deprioritized
+relative to isolating the source of $M_3$'s calibration effect via
+ablation, which was run instead.
+
+\subsection{Operational lead-time metric}
+\label{sec:methodology-operational}
+
+Independent of the statistical tests above, an operational metric is
+reported at a fixed false-alarm budget (top 1\% alert rate, by each
+model's own score distribution): the fraction of adverse events captured
+(recall at 1\% alert rate) and the median/mean lead time between an
+alert and the qualifying adverse event. No execution simulation,
+slippage model, or strategy return is computed -- this remains a
+forecasting-quality translation, not a trading study.

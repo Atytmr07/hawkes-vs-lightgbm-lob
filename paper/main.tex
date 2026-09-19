@@ -1,0 +1,108 @@
+\documentclass[11pt]{article}
+
+% ---------------------------------------------------------------------
+% Portable package set only -- no arXiv-only class files. Compiles with
+% a standard TeX Live / MiKTeX install via pdflatex + bibtex, or latexmk.
+% ---------------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{natbib}
+\usepackage{hyperref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!50!black,
+  pdftitle={Parametric Inductive Bias vs. Free Feature Learning in High-Frequency Queue Depletion Forecasting},
+  pdfauthor={}
+}
+
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+
+\newcommand{\PRAUC}{\mathrm{PR\text{-}AUC}}
+
+\title{Parametric Inductive Bias vs.\ Free Feature Learning:\\
+Evaluating a Multivariate Hawkes Process Against Gradient-Boosted\\
+Trees for L1 Order-Book Queue Depletion Forecasting}
+
+\author{%
+  \todo{Author name(s) and affiliation(s)}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We ask whether a parametric, unsupervised, maximum-likelihood-constrained
+multivariate Hawkes self-exciting point process ($M_2$) generalizes better
+than an unconstrained gradient-boosted-tree model ($M_1$) at forecasting
+short-horizon L1 limit-order-book queue depletion, given that $M_2$'s
+intensity is, by construction, a linear projection of $M_1$'s own
+multi-scale exponentially-weighted feature bank and therefore cannot add
+information the tree cannot already represent. Using 38 days
+(2024-02-22 to 2024-03-30) of unaggregated Binance BTCUSDT perpetual
+futures \texttt{trades} and \texttt{bookTicker} data ($1{,}053{,}434{,}969$
+causally aligned, typed events across a 10-event microstructure taxonomy),
+we find that $M_1$ dominates $M_2$ at every training-sample budget from
+2 hours to 31 days on a fixed out-of-sample test week, with no crossover
+sample size $N^{*}$: the gap is $0.012$--$0.031$ PR-AUC in $M_1$'s favor and
+remains a full order of magnitude above the pre-registered
+$\Delta\PRAUC \ge 0.005$ threshold even under a calibration budget scaled
+up to 50$\times$ the originally used sample (rolling Giacomini--White test,
+$p \approx 0$, statistic $-38.59$). A third model, $M_3$ ($M_1$ plus an
+hourly Hawkes-derived spectral-radius regime indicator and linearized
+trade-size marks), shows no PR-AUC advantage over $M_1$ on the
+500\,ms-horizon Primary Endpoint, but a formal rolling
+Giacomini--White test reveals a small, statistically significant
+\emph{calibration} (log-loss) improvement over $M_1$ ($p \approx 5.1\times
+10^{-12}$; regime-feature-only variant, $p \approx 2.3\times10^{-15}$), an
+effect an ablation traces entirely to the regime feature, not the trade
+marks. Across an 18-specification secondary grid (2 targets $\times$ 3
+depletion thresholds $\times$ 3 horizons), Romano--Wolf FWER-controlled
+testing under the full 31-day rolling protocol confirms $M_1 > M_2$ at
+every specification (adjusted $p \le 0.0215$), and the same $M_1>M_2$
+finding replicates on an independent held-out test week within the
+primary window (six of seven budgets tested, gap $0.0107$--$0.0313$
+PR-AUC throughout). A cross-asset transfer study extended to six
+target assets (BTC $\to$ ETH/SOL/DOGE, then BNB/XRP/ADA) shows the
+BTC-fitted branching-ratio matrix $\boldsymbol{\Gamma}$ retains
+$78.97\%$--$89.3\%$ of each target asset's own $M_0\!\to\!M_1$
+predictive gap when transferred with only the baseline intensity
+$\boldsymbol{\mu}(t)$ re-estimated locally; the three assets added under
+this robustness extension cluster together just below the floor set by
+the original three, a pattern not resolved by the six rungs tested here.
+Taken together, the results falsify the hypothesis that MLE-constrained
+parametric compression generalizes better than free tree learning at any
+tested sample size for ranking-quality forecasting, while identifying a
+narrow, calibration-only channel through which a Hawkes-derived regime
+signal adds real, if modest, value.
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/related_work}
+\input{sections/data}
+\input{sections/methodology}
+\input{sections/results}
+\input{sections/limitations}
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{../references}
+
+\end{document}

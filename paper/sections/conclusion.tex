@@ -1,0 +1,78 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper set out to test, under a falsification-first protocol, whether
+a maximum-likelihood-constrained multivariate Hawkes process generalizes
+better than an unconstrained gradient-boosted-tree model at forecasting
+L1 order-book queue depletion, in a setting deliberately constructed so
+that the parametric model's intensity is a strict linear subspace of the
+tree model's own feature space -- making the comparison one of
+generalization under constraint, not of which model can see more
+information. Across every axis tested -- the full sample-size learning
+curve from 2 hours to 31 days of training data, a formal 31-day rolling
+Giacomini--White test, a calibration-budget robustness sweep up to
+50$\times$ the original Hawkes calibration sample, an 18-specification
+Romano--Wolf FWER-controlled grid, and independently tuned LightGBM
+hyperparameters for both models -- the free tree model $M_1$ beats the
+parametric Hawkes model $M_2$, by a wide and statistically decisive
+margin, with no crossover sample size at which the parametric model
+overtakes it. The single standing hypothesis that could have explained
+this away as a methodological artifact in $M_1$'s favor -- that $M_1$'s
+hyperparameters were undertuned relative to $M_2$'s -- was tested
+directly and found backwards: proper tuning narrows the gap by
+benefiting $M_2$ more than $M_1$, not the reverse.
+
+At the same time, the project did not simply confirm a null and stop.
+$M_3$, the one model in the ladder with access to genuinely non-linear
+information ($M_1$'s raw feature bank does not already contain) -- an
+hourly Hawkes-derived spectral-radius regime indicator and linearized
+trade-size marks -- showed no ranking-quality (PR-AUC) advantage over
+$M_1$ on the 500\,ms Primary Endpoint, exactly as the hourly regime
+feature's own coarser timescale would predict. Yet a formal test on a
+different, calibration-sensitive metric (log-loss, under the same
+31-day rolling protocol that established the $M_1$-vs-$M_2$ result)
+revealed a small but highly significant improvement, which an ablation
+traced cleanly to the regime feature alone, with the trade-size marks
+contributing nothing and mildly diluting the combined effect. This
+result -- real on one metric, absent on another, and not large enough to
+clear the pre-registered PR-AUC magnitude threshold under either reading
+-- is reported as exactly that: a modest, metric-specific finding, not
+rounded up into a headline reversal of the paper's primary conclusion,
+consistent with the project's stated commitment to reporting what the
+data says rather than what would make the best story.
+
+The cross-asset transfer ladder adds a further, independent line of
+evidence on the value of the parametric compression itself, separate
+from the sample-efficiency question the learning curve addresses. A
+branching-ratio matrix fit purely on BTC, transferred with only a local
+baseline intensity and marks re-estimated per target, recovers 81.7\%--89.3\%
+of each of three structurally different assets' (ETH, SOL, DOGE) own
+free-model advantage over the $M_0$ baseline -- with no evidence of
+degradation as tick size and event mix diverge further from BTC's own.
+This is a genuine, if narrower, generalization advantage for the
+parametric representation: not better absolute forecasting accuracy than
+a locally-trained free model, but a substantial fraction of that
+accuracy transported across instruments at essentially zero re-training
+cost, which a black-box tree model has no comparable native mechanism to
+achieve.
+
+Taken as a whole, the evidence assembled here falsifies the hypothesis
+that MLE-constrained parametric compression outperforms unconstrained
+tree learning for L1 queue-depletion \emph{ranking} quality at any tested
+sample size, training-data diversity, or calibration budget on this
+instrument and window -- a clean, negative, and well-powered result in
+its own right. It simultaneously identifies two narrower channels in
+which the parametric structure retains real value: a calibration-only
+predictive edge from a single Hawkes-derived regime summary, and a
+substantial, non-degrading transfer of predictive structure across
+instruments that a purely data-driven free model cannot replicate
+without retraining. Future work most directly motivated by this paper's
+own findings and limitations
+(Section~\ref{sec:limitations}) includes replicating the primary
+comparison over additional calendar windows and exchanges to establish
+temporal and cross-venue external validity, running the specified
+difference-in-differences placebo control against $M_3$'s
+now-established calibration effect rather than its originally tested
+null PR-AUC result, and extending the transfer ladder with a formal
+significance test and additional BTC source windows now that its
+disclosed simplifications have been resolved.

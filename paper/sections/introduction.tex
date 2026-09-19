@@ -1,0 +1,116 @@
+\section{Introduction}
+\label{sec:introduction}
+
+High-frequency limit-order-book (LOB) dynamics have long been modeled with
+two largely separate toolkits. The econometrics tradition favors
+parametric, likelihood-based point-process models -- most prominently the
+multivariate Hawkes self-exciting process -- which impose a structured,
+interpretable form on order-flow clustering and cross-excitation and are
+fit by unsupervised maximum likelihood on the event stream itself. The
+machine-learning tradition instead favors unconstrained, supervised
+function approximators -- gradient-boosted trees, in particular -- fit
+directly against a forecasting target on a rich, hand-engineered feature
+bank, with no likelihood story and no structural constraint on how inputs
+combine. Both approaches are used, sometimes on the same data, to answer
+essentially the same applied question: how likely is a given order-book
+queue to deplete in the next tens to hundreds of milliseconds?
+
+This paper asks a specific, falsifiable version of the comparison: under
+what sample-size regimes, if any, does a maximum-likelihood-constrained
+multivariate Hawkes process outperform an unconstrained LightGBM model at
+forecasting L1 queue depletion on Binance BTCUSDT perpetual futures, when
+both models are built from the \emph{same} underlying multi-scale
+exponentially-weighted-moving-average (EWMA) event-count feature bank?
+
+\subsection{The real question is generalization under constraint, not information}
+\label{sec:intro-structural-note}
+
+The comparison is deliberately not framed as ``does the Hawkes process see
+something the tree cannot.'' It structurally cannot. With the same decay
+grid $\beta_p \in \{0.2, 1.0, 5.0, 25.0, 100.0\}\ \mathrm{s}^{-1}$ used by
+both models, the fitted multivariate Hawkes intensity
+\[
+  \boldsymbol{\lambda}(t) = \boldsymbol{\mu}(t) + \sum_{p=1}^{5} \mathbf{A}^{(p)} \mathbf{Z}^{(\beta_p)}(t)
+\]
+is, by construction, a \emph{linear} function of exactly the same
+multi-scale event-count feature bank $\mathbf{Z}^{(\beta_p)}(t)$ that the
+gradient-boosted-tree model ($M_1$, Section~\ref{sec:methodology}) is free
+to combine nonlinearly, interact, and split on without restriction. A
+model whose feature space is a strict linear subspace of another model's
+own input space cannot, in the general case, exceed that other model on
+any supervised objective by exploiting genuinely new information -- at
+best it can match it. The interesting question this comparison can
+actually answer is therefore not an information question but a
+\emph{generalization} question: does the regularization implicit in an
+unsupervised, likelihood-constrained parametric fit -- effectively, a
+structured dimensionality reduction of the same feature space down to a
+handful of branching-ratio parameters per event-type pair -- generalize
+better than letting a flexible nonparametric learner fit that same space
+directly, particularly in small-sample, regime-shifted, or
+cross-instrument-transfer conditions where the tree has less to learn
+from and a strong parametric prior might be expected to help most?
+
+\subsection{Falsification-first framing}
+\label{sec:intro-falsification}
+
+This project is explicitly designed to be falsification-first rather than
+confirmation-seeking. A single Primary Confirmatory Endpoint is
+pre-registered before any result is examined: on the 500\,ms-horizon,
+50\%-of-spread adverse-price-shift target, a treatment model must beat
+$M_1$ by $\Delta\PRAUC \ge +0.005$ at $\alpha = 0.05$ under a formal,
+walk-forward significance test (the rolling Giacomini--White protocol of
+Section~\ref{sec:methodology}) for the parametric-compression hypothesis
+to be considered supported. Every other comparison in this paper --
+the full sample-size learning curve, the 18-specification secondary grid,
+the cross-asset transfer ladder, the operational lead-time metric -- is
+reported as exploratory evidence, not as a confirmatory test, and is
+labeled as such throughout. Where results were surprising or ran counter
+to a standing project hypothesis -- most notably, a documented
+expectation that untuned LightGBM hyperparameters were flattering $M_1$,
+later tested and found backwards (Section~\ref{sec:results-tuning}) -- the
+finding is reported plainly rather than smoothed over, consistent with
+the project's own stated philosophy that the goal is not to prove the
+Hawkes process adds value but to test, honestly, whether it does.
+
+\subsection{Why this matters}
+\label{sec:intro-why}
+
+Two practical audiences care about the answer. First, for real-time
+microstructure forecasting infrastructure, the choice between a
+parametric point-process model and a free tree model is a choice about
+sample-efficiency, interpretability, and cross-instrument transferability
+versus raw predictive power -- a Hawkes process needs far fewer bytes to
+describe, is cheaper to fit incrementally, and, as
+Section~\ref{sec:results-transfer} shows, transfers its fitted structure
+across instruments in a way a black-box tree model has no native
+mechanism to do at all. If the parametric model's generalization
+advantage in the small-sample or cross-instrument regime is real, that
+trade-off favors the parametric approach in exactly the conditions where
+a new instrument or a cold-start deployment has little training data of
+its own. Second, for the broader methodological question of when
+structured, likelihood-based inductive bias helps versus hurts relative
+to unconstrained supervised learning on the same feature space, L1 queue
+depletion is a clean, data-rich testbed: the ground-truth event stream is
+large (in excess of one billion typed events across the primary window),
+the two models share an identical feature basis by design, and the
+forecasting target is well defined and mechanically close to the
+underlying point process. A clear empirical answer in this setting speaks
+to a question broader than any one exchange or instrument.
+
+The remainder of the paper is organized as follows.
+Section~\ref{sec:related-work} situates this work relative to prior
+literature on Hawkes processes in market microstructure, LOB
+queue-depletion modeling, and machine-learning approaches to
+high-frequency forecasting. Section~\ref{sec:data} describes the data
+pipeline, the 38-day primary window, the 10-event microstructure
+taxonomy, and known data-quality constraints. Section~\ref{sec:methodology}
+gives the full model ladder ($M_0$--$M_3$), the Hawkes MLE formulation,
+the LightGBM setup, and the statistical testing protocols.
+Section~\ref{sec:results} reports the empirical results: the fixed-test
+learning curve, the rolling Giacomini--White test, the calibration-budget
+robustness sweep, the $M_3$ build and its ablation, the 18-specification
+Romano--Wolf grid, the cross-asset transfer ladder, the per-$N$
+hyperparameter-tuning finding, and the operational lead-time metric.
+Section~\ref{sec:limitations} discusses scope limitations, disclosed
+simplifications and their resolutions, and reproducibility caveats.
+Section~\ref{sec:conclusion} concludes.

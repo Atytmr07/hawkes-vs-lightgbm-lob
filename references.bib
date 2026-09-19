@@ -1,0 +1,269 @@
+% references.bib
+% Compiled via verified web search (September 2026) for hawkess-ml RELATED_WORK.md.
+% Every entry corresponds to a paper independently confirmed to exist (arXiv, publisher,
+% SSRN, or Semantic Scholar listing) at compilation time. See RELATED_WORK.md for notes on
+% entries whose exact venue/peer-review status could not be fully confirmed (Hewlett 2006,
+% moallemi2017queue, wallbridge2020translob).
+
+% ---------------------------------------------------------------------------
+% (a) Hawkes processes / self-exciting point processes in finance
+% ---------------------------------------------------------------------------
+
+@article{bacry2015hawkes,
+  author  = {Bacry, Emmanuel and Mastromatteo, Iacopo and Muzy, Jean-Fran{\c{c}}ois},
+  title   = {Hawkes Processes in Finance},
+  journal = {Market Microstructure and Liquidity},
+  volume  = {1},
+  number  = {1},
+  pages   = {1550005},
+  year    = {2015},
+  doi     = {10.1142/S2382626615500057},
+  eprint  = {1502.04592},
+  archivePrefix = {arXiv}
+}
+
+@article{hardiman2013critical,
+  author  = {Hardiman, Stephen J. and Bercot, Nicolas and Bouchaud, Jean-Philippe},
+  title   = {Critical reflexivity in financial markets: a {H}awkes process analysis},
+  journal = {European Physical Journal B},
+  volume  = {86},
+  pages   = {442},
+  year    = {2013},
+  doi     = {10.1140/epjb/e2013-40107-3},
+  eprint  = {1302.1405},
+  archivePrefix = {arXiv}
+}
+
+@article{filimonov2015apparent,
+  author  = {Filimonov, Vladimir and Sornette, Didier},
+  title   = {Apparent criticality and calibration issues in the {H}awkes self-excited point process model: application to high-frequency financial data},
+  journal = {Quantitative Finance},
+  volume  = {15},
+  number  = {8},
+  pages   = {1293--1314},
+  year    = {2015},
+  doi     = {10.1080/14697688.2015.1032544},
+  eprint  = {1308.6756},
+  archivePrefix = {arXiv}
+}
+
+@article{bowsher2007modelling,
+  author  = {Bowsher, Clive G.},
+  title   = {Modelling security market events in continuous time: Intensity based, multivariate point process models},
+  journal = {Journal of Econometrics},
+  volume  = {141},
+  number  = {2},
+  pages   = {876--912},
+  year    = {2007},
+  doi     = {10.1016/j.jeconom.2006.11.007}
+}
+
+@article{bormetti2015modelling,
+  author  = {Bormetti, Giacomo and Calcagnile, Lucio Maria and Treccani, Michele and Corsi, Fulvio and Marmi, Stefano and Lillo, Fabrizio},
+  title   = {Modelling systemic price cojumps with {H}awkes factor models},
+  journal = {Quantitative Finance},
+  volume  = {15},
+  number  = {7},
+  pages   = {1137--1156},
+  year    = {2015},
+  doi     = {10.1080/14697688.2014.996586}
+}
+
+@inproceedings{hewlett2006clustering,
+  author    = {Hewlett, Peter},
+  title     = {Clustering of order arrivals, price impact and trade path optimisation},
+  booktitle = {Workshop on Financial Modeling with Jump Processes},
+  address   = {{\'E}cole Polytechnique},
+  year      = {2006},
+  note      = {Workshop presentation; no confirmed peer-reviewed journal publication located}
+}
+
+% ---------------------------------------------------------------------------
+% (b) Limit order book modeling and queue-position / queue-depletion prediction
+% ---------------------------------------------------------------------------
+
+@article{cont2014price,
+  author  = {Cont, Rama and Kukanov, Arseniy and Stoikov, Sasha},
+  title   = {The Price Impact of Order Book Events},
+  journal = {Journal of Financial Econometrics},
+  volume  = {12},
+  number  = {1},
+  pages   = {47--88},
+  year    = {2014},
+  doi     = {10.1093/jjfinec/nbt003},
+  eprint  = {1011.6402},
+  archivePrefix = {arXiv}
+}
+
+@article{huang2015simulating,
+  author  = {Huang, Weibing and Lehalle, Charles-Albert and Rosenbaum, Mathieu},
+  title   = {Simulating and Analyzing Order Book Data: The Queue-Reactive Model},
+  journal = {Journal of the American Statistical Association},
+  volume  = {110},
+  number  = {509},
+  pages   = {107--122},
+  year    = {2015},
+  doi     = {10.1080/01621459.2014.982278},
+  eprint  = {1312.0563},
+  archivePrefix = {arXiv}
+}
+
+@article{gould2016queue,
+  author  = {Gould, Martin D. and Bonart, Julius},
+  title   = {Queue Imbalance as a One-Tick-Ahead Price Predictor in a Limit Order Book},
+  journal = {Market Microstructure and Liquidity},
+  volume  = {2},
+  number  = {2},
+  pages   = {1650006},
+  year    = {2016},
+  doi     = {10.1142/S2382626616500064},
+  eprint  = {1512.03492},
+  archivePrefix = {arXiv}
+}
+
+@techreport{moallemi2017queue,
+  author      = {Moallemi, Ciamac C. and Yuan, Kai},
+  title       = {A Model for Queue Position Valuation in a Limit Order Book},
+  institution = {Columbia Business School},
+  type        = {Research Paper},
+  number      = {17-70},
+  year        = {2017},
+  note        = {Working paper; no confirmed peer-reviewed journal publication located}
+}
+
+% ---------------------------------------------------------------------------
+% (c) Machine learning (GBM, deep learning, transformers) for LOB forecasting
+% ---------------------------------------------------------------------------
+
+@article{kercheval2015modelling,
+  author  = {Kercheval, Alec N. and Zhang, Yuan},
+  title   = {Modelling high-frequency limit order book dynamics with support vector machines},
+  journal = {Quantitative Finance},
+  volume  = {15},
+  number  = {8},
+  pages   = {1315--1329},
+  year    = {2015},
+  doi     = {10.1080/14697688.2015.1032546}
+}
+
+@article{ntakaris2018benchmark,
+  author  = {Ntakaris, Adamantios and Magris, Martin and Kanniainen, Juho and Gabbouj, Moncef and Iosifidis, Alexandros},
+  title   = {Benchmark dataset for mid-price forecasting of limit order book data with machine learning methods},
+  journal = {Journal of Forecasting},
+  volume  = {37},
+  number  = {8},
+  pages   = {852--866},
+  year    = {2018},
+  doi     = {10.1002/for.2543},
+  eprint  = {1705.03233},
+  archivePrefix = {arXiv}
+}
+
+@article{zhang2019deeplob,
+  author  = {Zhang, Zihao and Zohren, Stefan and Roberts, Stephen},
+  title   = {{DeepLOB}: Deep Convolutional Neural Networks for Limit Order Books},
+  journal = {IEEE Transactions on Signal Processing},
+  volume  = {67},
+  number  = {11},
+  pages   = {3001--3012},
+  year    = {2019},
+  doi     = {10.1109/TSP.2019.2907260},
+  eprint  = {1808.03668},
+  archivePrefix = {arXiv}
+}
+
+@article{sirignano2019universal,
+  author  = {Sirignano, Justin and Cont, Rama},
+  title   = {Universal features of price formation in financial markets: perspectives from deep learning},
+  journal = {Quantitative Finance},
+  volume  = {19},
+  number  = {9},
+  pages   = {1449--1459},
+  year    = {2019},
+  doi     = {10.1080/14697688.2019.1622295},
+  eprint  = {1803.06917},
+  archivePrefix = {arXiv}
+}
+
+@misc{wallbridge2020translob,
+  author        = {Wallbridge, James},
+  title         = {Transformers for Limit Order Books},
+  year          = {2020},
+  eprint        = {2003.00130},
+  archivePrefix = {arXiv},
+  note          = {arXiv preprint; no confirmed peer-reviewed venue located}
+}
+
+% ---------------------------------------------------------------------------
+% (d) Papers directly comparing a parametric point-process model against an ML model
+%     (closest matches found; see RELATED_WORK.md for the honest gap discussion)
+% ---------------------------------------------------------------------------
+
+@inproceedings{shi2022state,
+  author    = {Shi, Zijian and Cartlidge, John},
+  title     = {State Dependent Parallel Neural {H}awkes Process for Limit Order Book Event Stream Prediction and Simulation},
+  booktitle = {Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD '22)},
+  year      = {2022},
+  doi       = {10.1145/3534678.3539462}
+}
+
+@article{nitturanantha2026forecasting,
+  author  = {Nittur Anantha, Aditya and Jain, Shashi},
+  title   = {Forecasting High Frequency Order Flow Imbalance using {H}awkes Processes},
+  journal = {Computational Economics},
+  volume  = {67},
+  number  = {1},
+  pages   = {279--312},
+  year    = {2026},
+  doi     = {10.1007/s10614-025-11039-3},
+  eprint  = {2408.03594},
+  archivePrefix = {arXiv},
+  note    = {Reports a sum-of-exponentials Hawkes process as the best forecaster of order-flow imbalance among unspecified ``competing models''; whether those competitors include ML/tree/deep-learning baselines was not confirmed from the public abstract}
+}
+
+@inproceedings{mei2017neural,
+  author    = {Mei, Hongyuan and Eisner, Jason},
+  title     = {The Neural {H}awkes Process: A Neurally Self-Modulating Multivariate Point Process},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  volume    = {30},
+  year      = {2017},
+  eprint    = {1612.09328},
+  archivePrefix = {arXiv}
+}
+
+% ---------------------------------------------------------------------------
+% (e) Statistical methodology: predictive-ability testing and multiple-testing correction
+% ---------------------------------------------------------------------------
+
+@article{giacomini2006tests,
+  author  = {Giacomini, Raffaella and White, Halbert},
+  title   = {Tests of Conditional Predictive Ability},
+  journal = {Econometrica},
+  volume  = {74},
+  number  = {6},
+  pages   = {1545--1578},
+  year    = {2006},
+  doi     = {10.1111/j.1468-0262.2006.00718.x}
+}
+
+@article{romano2005stepwise,
+  author  = {Romano, Joseph P. and Wolf, Michael},
+  title   = {Stepwise Multiple Testing as Formalized Data Snooping},
+  journal = {Econometrica},
+  volume  = {73},
+  number  = {4},
+  pages   = {1237--1282},
+  year    = {2005},
+  doi     = {10.1111/j.1468-0262.2005.00615.x}
+}
+
+@article{romano2005exact,
+  author  = {Romano, Joseph P. and Wolf, Michael},
+  title   = {Exact and Approximate Stepdown Methods for Multiple Hypothesis Testing},
+  journal = {Journal of the American Statistical Association},
+  volume  = {100},
+  number  = {469},
+  pages   = {94--108},
+  year    = {2005},
+  doi     = {10.1198/016214504000000539}
+}

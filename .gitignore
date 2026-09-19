@@ -1,0 +1,39 @@
+# Data: raw/aligned/feature Parquet, downloaded archives, result checkpoints.
+# All of this is derived from Binance Data Vision and is multi-GB to 65GB+ --
+# never intended to be versioned. Regenerate via scripts/01_fetch_data.py +
+# scripts/02_build_features.py per PROJECT_SPEC.md.
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Local tool/session state (not project content)
+.claude/
+
+# Internal working/session notes: audit trail, not the polished result --
+# the paper (paper/) and PROJECT_SPEC.md are the public-facing record.
+STATUS.md
+STATUS_*.md
+STATE_AUDIT.md
+NEXT_STEPS.md
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+
+# LaTeX build artifacts (paper/ sources are versioned, build output is not)
+paper/**/*.aux
+paper/**/*.bbl
+paper/**/*.blg
+paper/**/*.log
+paper/**/*.out
+paper/**/*.toc
+paper/**/*.fls
+paper/**/*.fdb_latexmk
+paper/**/*.synctex.gz
+paper/**/main.pdf

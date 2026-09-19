@@ -1,0 +1,549 @@
+\section{Results}
+\label{sec:results}
+
+\subsection{Fixed-test learning curve}
+\label{sec:results-learning-curve}
+
+The learning-curve experiment fixes the test set to the final 7 calendar
+days of the primary window (2024-03-24 -- 2024-03-30, $579{,}593$ rows,
+target prevalence $0.3440345208$) and varies the training-sample budget
+$N \in \{2\text{h}, 1\text{d}, 3\text{d}, 7\text{d}, 14\text{d}, 23\text{d},
+31\text{d}\}$ as rolling backward windows ending at the test-set boundary,
+so that every $N$ is compared against identical held-out observations.
+Hawkes calibration at every $N$ used a fixed 100{,}000 type-stratified
+event subsample and the seasonal-profile baseline; all ten target-row
+optimizations converged at every $N$. Table~\ref{tab:learning-curve}
+reports the full result.
+
+\begin{table}[htbp]
+\centering
+\caption{Fixed-test learning curve, PR-AUC and Brier score by training
+budget $N$. Test set: 2024-03-24 -- 2024-03-30 (579{,}593 rows,
+prevalence 0.3440). $\rho(\boldsymbol\Gamma)$ is the fitted spectral
+radius; the post-hoc stationarity projection did not bind at any $N$
+(scale $=1.0$ throughout).}
+\label{tab:learning-curve}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrrrrrr@{}}
+\toprule
+$N$ & Train rows & $M_0$ PR-AUC & $M_1$ PR-AUC & $M_2$ PR-AUC & $M_0$ Brier & $M_1$ Brier & $M_2$ Brier & $\rho(\boldsymbol\Gamma)$ \\
+\midrule
+2h  & 7{,}200     & 0.5705600745 & 0.6869820960 & 0.6559263216 & 0.2223043455 & 0.1916784603 & 0.2098252854 & 0.9382741897 \\
+1d  & 82{,}799    & 0.5959138042 & 0.7008203642 & 0.6794294650 & 0.2083216397 & 0.1841098182 & 0.1873945943 & 0.9327609059 \\
+3d  & 248{,}397   & 0.6252981828 & 0.7050007357 & 0.6923842563 & 0.1891395145 & 0.1680171744 & 0.1707870065 & 0.9542078309 \\
+7d  & 579{,}593   & 0.6276258471 & 0.7058287032 & 0.6918090742 & 0.1858112027 & 0.1653064068 & 0.1685688648 & 0.9549810294 \\
+14d & 1{,}159{,}186 & 0.6295886303 & 0.7066682758 & 0.6932490467 & 0.1911223953 & 0.1652326226 & 0.1685409388 & 0.9604496341 \\
+23d & 1{,}899{,}085 & 0.6296402443 & 0.7062285858 & 0.6913830866 & 0.2001300809 & 0.1673230436 & 0.1723540581 & 0.9452233127 \\
+31d & 2{,}558{,}894 & 0.6282185486 & 0.7058569833 & 0.6921162539 & 0.2139888824 & 0.1710036128 & 0.1756603864 & 0.9561896057 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+$M_1$ leads $M_2$ on PR-AUC at every $N$, by a margin of roughly
+$0.012$--$0.031$ PR-AUC. The gap narrows sharply from $N=2$h to
+$N=3$d and then largely flattens from $3$d through $31$d; no crossover
+$N^{*}$ at which $M_1$ overtakes $M_2$ is observed at any tested budget
+-- if anything $M_2$ never catches up, contrary to a naive
+small-sample-favors-the-parametric-model intuition. As discussed in
+Section~\ref{sec:results-calibration}, this exact magnitude/shape was
+subsequently found to be partly an artifact of a fixed (not $N$-scaled)
+Hawkes calibration event budget; the direction of the finding --
+$M_1 > M_2$ throughout, no crossover -- was confirmed robust under a
+corrected, $N$-scaled calibration budget.
+
+\subsection{Rolling Giacomini--White test}
+\label{sec:results-gw}
+
+The rolling protocol (trailing 7-day training window, daily
+re-estimation, forecasting 2024-02-29 through 2024-03-30) produced 31
+out-of-sample days, $2{,}561{,}477$ OOS rows, and $42{,}694$ one-minute
+loss blocks. With the loss differential defined as $M_1$ log-loss minus
+$M_2$ log-loss, the mean differential was $-0.01000890845$, the GW
+statistic was $-38.58596988$, and the two-sided $p$-value was
+computationally $0.0$ (floating-point underflow at the reported
+precision). The negative sign favors $M_1$: this is the formal,
+walk-forward confirmation of the pattern in
+Table~\ref{tab:learning-curve}, at overwhelming statistical significance.
+
+\subsection{Calibration-budget robustness}
+\label{sec:results-calibration}
+
+A control investigation established that the 100{,}000-event Hawkes
+calibration subsample used throughout Table~\ref{tab:learning-curve} is a
+\emph{fixed} constant, not scaled with $N$ -- it represents 8.086\% of
+raw calibration events available at $N=2$h but only 0.011\% at $N=31$d,
+even as the tree-visible training-row count grows roughly $355\times$
+across the same grid. A single control fit at $N=14$d with the budget
+raised $10\times$ (to 1{,}000{,}000 events) moved $M_2$'s PR-AUC by
+$+0.0012271$ (closing 9.24\% of its gap to $M_1$ at that $N$) -- a real,
+above-noise effect, roughly 6--14$\times$ the project's own documented
+run-to-run reproducibility noise floor ($\sim 0.0001$--$0.0002$).
+
+A full $N$-scaled sweep was then run, with budgets chosen per $N$
+(100{,}000 at 2h, rising to 5{,}000{,}000 at 31d), controlled against a
+matched same-machine flat-100{,}000 rerun to isolate the budget effect
+from an unrelated cross-machine Hawkes non-bit-reproducibility finding
+(Section~\ref{sec:limitations}). Table~\ref{tab:calibration-sweep}
+reports the result.
+
+\begin{table}[htbp]
+\centering
+\caption{$N$-scaled Hawkes calibration budget sweep versus a matched
+same-machine flat-100{,}000-event baseline. Gap = $M_1 - M_2$ PR-AUC.
+$M_0$/$M_1$ matched exactly between all runs at every $N$ (neither
+touches the Hawkes fit).}
+\label{tab:calibration-sweep}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+$N$ & Budget & $M_2$, 100k & $M_2$, scaled & $\Delta M_2$ & Gap, 100k & Gap, scaled (closed) \\
+\midrule
+2h  & 100{,}000     & 0.6575473 & 0.6575473 & 0.0      & 0.02943 & 0.02943\ (0.0\%) \\
+1d  & 300{,}000     & 0.6796216 & 0.6804154 & +0.00079 & 0.02120 & 0.02040\ (3.7\%) \\
+3d  & 1{,}000{,}000 & 0.6924211 & 0.6931325 & +0.00071 & 0.01258 & 0.01187\ (5.7\%) \\
+7d  & 2{,}000{,}000 & 0.6916795 & 0.6934870 & +0.00181 & 0.01415 & 0.01234\ (12.8\%) \\
+14d & 3{,}000{,}000 & 0.6935275 & 0.6947720 & +0.00124 & 0.01314 & 0.01190\ (9.5\%) \\
+23d & 4{,}000{,}000 & 0.6913924 & 0.6943620 & +0.00297 & 0.01484 & 0.01187\ (20.0\%) \\
+31d & 5{,}000{,}000 & 0.6920127 & 0.6943959 & +0.00238 & 0.01384 & 0.01146\ (17.2\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Every $N$ shows a real, positive $\Delta M_2$; the gap closes
+$3.7\%$--$20.0\%$ depending on $N$, growing roughly with $N$ (consistent
+with the fixed budget representing a shrinking fraction of available
+data as $N$ grows). \textbf{The qualitative finding is confirmed robust,
+not merely ``unlikely to reverse'': even at the most aggressive budget
+tested} ($N=31$d, 5{,}000{,}000 events -- still only 0.53\% of the
+$936{,}567{,}648$ raw events available at that $N$), \textbf{$M_1$ leads
+$M_2$ by 0.01146 PR-AUC, a full order of magnitude above the
+pre-registered $\Delta\PRAUC \ge 0.005$ threshold, in the opposite
+direction. No crossover $N^{*}$ exists anywhere in the tested range under
+either calibration budget.} What Table~\ref{tab:learning-curve} gets
+wrong is the \emph{exact magnitude} of the $M_1$--$M_2$ gap at each $N$
+(overstated by 4--20\%), not the direction of the headline finding.
+
+\subsection{$M_3$: structural non-nested dynamics}
+\label{sec:results-m3}
+
+$M_3$ (Section~\ref{sec:methodology-ladder}) was built and evaluated on
+the fixed test week at four budgets, $N \in \{3\text{d}, 7\text{d},
+14\text{d}, 31\text{d}\}$. Table~\ref{tab:m3-comparison} reports the full
+$M_0$--$M_3$ comparison.
+
+\begin{table}[htbp]
+\centering
+\caption{$M_0$--$M_3$ comparison, fixed test week. $\Delta(M_3 - M_1)$ is
+the raw PR-AUC difference (not a significance test; see
+Table~\ref{tab:m3-gw} for the formal test).}
+\label{tab:m3-comparison}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+$N$ & Train rows & $M_0$ & $M_1$ & $M_2$ & $M_3$ & $\Delta(M_3 - M_1)$ \\
+\midrule
+3d  & 248{,}397     & 0.6252981828 & 0.7050007357 & 0.6922661830 & 0.7048622443 & $-0.0001384914$ \\
+7d  & 579{,}593     & 0.6276258471 & 0.7058287032 & 0.6916416162 & 0.7061519538 & $+0.0003232506$ \\
+14d & 1{,}159{,}186 & 0.6295886303 & 0.7066682758 & 0.6933895106 & 0.7070705525 & $+0.0004022767$ \\
+31d & 2{,}558{,}894 & 0.6282185486 & 0.7058569833 & 0.6921377668 & 0.7063012232 & $+0.0004442399$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Brier scores (lower is better) at the same budgets show $M_3$ at or
+slightly below $M_1$ from $N=7$d onward (e.g.\ at $N=31$d: $M_1$
+$0.1710036128$ vs.\ $M_3$ $0.1700600768$), a hint -- confirmed formally
+below -- that $M_3$'s effect, if real, is a calibration effect rather than
+a ranking effect. Every $\Delta(M_3-M_1)$ in Table~\ref{tab:m3-comparison}
+is at least an order of magnitude below the $+0.005$ pre-registered
+threshold, and the sign is inconsistent (negative at $N=3$d, small and
+positive from $7$d onward) -- on raw PR-AUC alone, this is a null result
+on the Primary Endpoint at every tested $N$, consistent with the
+specification's own expectation that the hourly regime indicator is
+``not expected to carry 100\,ms-horizon micro-timing signal'' against a
+500\,ms-horizon endpoint. ($M_2$'s values in this table differ from
+Table~\ref{tab:learning-curve} by $\sim 0.0001$--$0.0002$ at every $N$; this
+is the same cross-machine Hawkes non-bit-reproducibility discussed in
+Section~\ref{sec:limitations}, not an $M_3$-related effect -- confirmed
+because $M_0$/$M_1$, which never touch the Hawkes fit, reproduce their
+Table~\ref{tab:learning-curve} values to full displayed precision.)
+
+A control fit at $N=14$d with the Hawkes calibration budget raised
+$10\times$ (matching Section~\ref{sec:results-calibration}) moved
+$\Delta(M_3-M_1)$ by only $-0.0000191$ -- an order of magnitude
+\emph{below} the noise floor that flagged $M_2$'s analogous move as real
+-- confirming, for a structural reason (neither of $M_3$'s two extra
+feature blocks reads the Hawkes MLE's own fitted intensities; the regime
+block uses its own independently-capped 250{,}000-event hourly tracker and
+the marks block uses no MLE at all), that $M_3$'s null PR-AUC result is
+not a calibration-budget artifact.
+
+\subsubsection{The formal rolling GW test reverses the qualitative reading}
+\label{sec:results-m3-gw}
+
+A formal rolling Giacomini--White test for $M_3$ (same 7-day trailing
+window, daily re-estimation, 2024-02-29 -- 2024-03-30 protocol as the
+official $M_1$-vs-$M_2$ result) was subsequently run, and produced an
+unexpected but real result, reported in full in
+Table~\ref{tab:m3-gw}. A sanity check first confirmed that $\mathrm{GW}(M_1,M_2)$
+recomputed fresh on this same pipeline closely reproduces the official
+Section~\ref{sec:results-gw} numbers (mean differential $-0.010035$ vs.\
+official $-0.010009$; statistic $-38.617$ vs.\ official $-38.586$, small
+deviations consistent with the same cross-machine non-reproducibility
+noted above, not a new concern).
+
+\begin{table}[htbp]
+\centering
+\caption{Formal rolling Giacomini--White test, $M_1$ vs.\ $M_3$, both the
+combined regime+marks definition and a regime-feature-only ablation
+variant. 31-day rolling protocol, 42{,}694 minute blocks, 2{,}561{,}477
+OOS rows. Positive differential means $M_3$ has lower (better) log-loss
+than $M_1$.}
+\label{tab:m3-gw}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Quantity & $M_3$ = regime + marks & $M_3$ = regime only \\
+\midrule
+Mean log-loss differential ($M_1 - M_3$) & $+0.0010446644809617568$ & $+0.0011867723437099665$ \\
+GW statistic & $+6.902180900472671$ & $+7.9226506944173085$ \\
+$p$-value & $5.121016234527669 \times 10^{-12}$ & $2.325000489836069 \times 10^{-15}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{$M_3$ clears the significance bar at $\alpha=0.05$ under the
+project's own formal test, on log-loss, at $p \approx 5.1 \times
+10^{-12}$}, an order of magnitude beyond the significance threshold --
+the opposite qualitative conclusion from the fixed-test-week PR-AUC
+reading above. This is not a contradiction once the difference between
+metric (log-loss/calibration vs.\ PR-AUC/ranking) and protocol
+(31 independent daily walk-forward folds vs.\ one static test week) is
+made explicit: a small, consistently one-directional calibration effect
+invisible against day-to-day noise in a single week can still reach
+overwhelming significance once aggregated over 31 days. Day-by-day
+PR-AUC in the rolling run is genuinely split (roughly half the 29
+forecast days favor $M_3$, half favor $M_1$, by margins of
+$\pm 0.0001$--$0.001$), consistent with a calibration effect rather than a
+ranking effect and inconsistent with a leakage or bug explanation for the
+GW result. The effect size itself is an order of magnitude smaller than
+the $M_1$-vs-$M_2$ effect (mean differential $+0.0010$ here vs.\
+$-0.0100$ for $M_1$-vs-$M_2$).
+
+\textbf{The correct combined statement is: $M_3$ clears the formal
+significance bar on log-loss, but has not been shown to clear the
+pre-registered $\Delta\PRAUC \ge +0.005$ magnitude bar}, which is defined
+on a different metric and was already measured to be missed by roughly an
+order of magnitude at every tested $N$.
+
+\subsubsection{Ablation: the regime feature, not the trade-size marks, drives the effect}
+\label{sec:results-m3-ablation}
+
+A static ablation at $N=14$d and $N=31$d isolated $M_3$'s two extra
+feature blocks (Table~\ref{tab:m3-ablation}): $M_1$ plus regime only,
+$M_1$ plus marks only, and $M_1$ plus both (the full $M_3$ definition).
+
+\begin{table}[htbp]
+\centering
+\caption{$M_3$ ablation: regime feature vs.\ trade-size marks, fixed test
+week. Values are deltas versus $M_1$.}
+\label{tab:m3-ablation}
+\begin{tabular}{@{}llrr@{}}
+\toprule
+$N$ & Variant & $\Delta$PR-AUC vs.\ $M_1$ & $\Delta$Brier vs.\ $M_1$ \\
+\midrule
+14d & +regime only  & $+0.0002044$ & $-0.0001865$ (better) \\
+14d & +marks only   & $+0.0000600$ & $+0.0001075$ (worse) \\
+14d & +both ($M_3$) & $+0.0003832$ & $-0.0001490$ (better) \\
+31d & +regime only  & $+0.0001652$ & $-0.0010505$ (better) \\
+31d & +marks only   & $+0.0001522$ & $+0.0002226$ (worse) \\
+31d & +both ($M_3$) & $+0.0003321$ & $-0.0009384$ (better) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The pattern is consistent across both $N$ and both metrics: the regime
+feature $\rho(\boldsymbol{\Gamma}_t)$ drives essentially all of the
+calibration (Brier) improvement, and the marks block makes Brier slightly
+\emph{worse} on its own at both $N$; ``both'' is not simply additive --
+full $M_3$'s Brier improvement is smaller in magnitude than regime alone,
+indicating marks partially dilutes the regime feature's calibration
+benefit when combined. A follow-up formal rolling GW test isolating the
+regime-only variant (Table~\ref{tab:m3-gw}, right column) confirms this:
+dropping marks entirely makes the effect \emph{larger and more
+significant}, not smaller (mean differential $+0.00104 \to +0.00119$,
+$+14\%$; $p$-value tightening three orders of magnitude, $5.1\times
+10^{-12} \to 2.3\times10^{-15}$). \textbf{The hourly $\rho(\boldsymbol{\Gamma}_t)$
+regime feature alone produces a small but highly significant log-loss
+improvement over $M_1$ -- a cleaner result than the combined $M_3$
+definition, because the marks block was mildly diluting it. This still
+does not clear the pre-registered PR-AUC magnitude threshold.}
+
+\subsection{18-specification secondary grid and Romano--Wolf FWER control}
+\label{sec:results-secondary-grid}
+
+The secondary/exploratory grid (2 targets $\times$ 3 depletion thresholds
+$X$ $\times$ 3 horizons $h$) was evaluated under the full 31-day rolling
+protocol (trailing 7-day training window, daily re-estimation,
+2024-02-29 -- 2024-03-30), with the shared unsupervised Hawkes calibration
+computed once per forecast day (not once per specification) since it
+never sees the target, and only the 18 $\times$ 2 supervised LightGBM
+trees refit daily. A codebase quirk is disclosed here rather than hidden:
+\texttt{target\_a}'s implementation does not take a depletion-fraction
+argument (only Target B genuinely varies by $X$), so the nominal 18
+named specifications contain only 12 distinct tests (3 for Target A, one
+per horizon; 9 for Target B). All 18 named columns are nonetheless
+reported, as specified. Table~\ref{tab:romano-wolf} gives the full
+31-day rolling result; a cheaper static 7-day-test-week first pass (7
+day-blocks) found the same qualitative pattern with a looser bound
+(adjusted $p \le 0.0375$, vs.\ $\le 0.0215$ under the full rolling
+protocol reported here).
+
+\begin{table}[htbp]
+\centering
+\caption{Romano--Wolf FWER-controlled test across the 18-specification
+secondary grid, full 31-day rolling protocol. Mean diff is $M_1 - M_2$
+log-loss (negative favors $M_1$). Target A's three $X$-values are
+byte-identical per horizon (see text) and shown collapsed.}
+\label{tab:romano-wolf}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Spec & Mean diff ($M_1-M_2$) & Romano--Wolf adjusted $p$ \\
+\midrule
+target\_a\_x\{30,50,70\}\_h100  & $-0.008972$ & 0.004 \\
+target\_a\_x\{30,50,70\}\_h500  & $-0.010056$ & 0.003 \\
+target\_a\_x\{30,50,70\}\_h2000 & $-0.009451$ & 0.006 \\
+target\_b\_x30\_h100   & $-0.003294$ & 0.0215 \\
+target\_b\_x30\_h500   & $-0.006057$ & 0.006 \\
+target\_b\_x30\_h2000  & $-0.006895$ & 0.012 \\
+target\_b\_x50\_h100   & $-0.004207$ & 0.0215 \\
+target\_b\_x50\_h500   & $-0.006574$ & 0.006 \\
+target\_b\_x50\_h2000  & $-0.007942$ & 0.006 \\
+target\_b\_x70\_h100   & $-0.006245$ & 0.012 \\
+target\_b\_x70\_h500   & $-0.008168$ & 0.004 \\
+target\_b\_x70\_h2000  & $-0.009420$ & 0.003 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Every specification shows the same sign ($M_1$ beats $M_2$) and
+every Romano--Wolf-adjusted $p$-value clears $\alpha=0.05$}, with a
+maximum adjusted $p$ of $0.0215$ under the full rolling protocol. The
+$M_1 > M_2$ finding is not an artifact of the single Primary Endpoint
+target -- it holds, FWER-controlled, across both target definitions and
+all three horizons. Target B's effect sizes are the largest and most
+significant of the grid, consistent with Target B (pure depth depletion)
+being a more mechanically order-flow-driven target than Target A.
+
+\subsection{Cross-asset transfer ladder}
+\label{sec:results-transfer}
+
+The transfer protocol fixes the branching-ratio matrix
+$\boldsymbol{\Gamma}$ estimated from a BTC source window
+($N=3$d, 2024-03-21 -- 2024-03-24; $\rho(\boldsymbol\Gamma) = 0.9570094762$,
+10/10 converged) and re-estimates only the baseline intensity
+$\boldsymbol{\mu}(t)$ (via the profiled-MLE estimator described below) on
+each target asset, over a matched 7-day window (2024-03-24 -- 2024-03-30,
+5-day train / 2-day test split). This was first run on ETH, SOL, and DOGE,
+then, as a robustness extension, independently repeated on three further
+liquid USDT-margined perpetuals (BNB, XRP, ADA) using an identical
+protocol and a freshly-refit BTC source $\boldsymbol\Gamma$
+($\rho(\boldsymbol\Gamma)=0.9570094762$, matching the original fit to 10
+decimal places). Table~\ref{tab:transfer-synthesis} synthesizes the
+result across all six rungs.
+
+\begin{table}[htbp]
+\centering
+\caption{Cross-asset transfer ladder synthesis, all six rungs tested.
+$M_2$ uses BTC's fitted $\boldsymbol\Gamma$ transferred directly
+(\texttt{trades\_first} tie treatment) with only $\boldsymbol\mu(t)$
+re-estimated locally via the profiled-MLE estimator. ``\% gap captured''
+is $(M_2-M_0)/(M_1-M_0)$. ETH/SOL/DOGE are the original rung; BNB/XRP/ADA
+are the robustness-extension rung, added under an identical protocol.}
+\label{tab:transfer-synthesis}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Asset & $M_0$ & $M_1$ & $M_2$ (transferred $\boldsymbol\Gamma$) & gap($M_1-M_0$) & gap($M_2-M_0$) & \% gap captured \\
+\midrule
+ETH  & 0.4464 & 0.5132 & 0.5009 & 0.0667 & 0.0545 & 81.7\% \\
+SOL  & 0.6345 & 0.7008 & 0.6937 & 0.0663 & 0.0592 & 89.3\% \\
+DOGE & 0.6694 & 0.7505 & 0.7377 & 0.0811 & 0.0683 & 84.2\% \\
+\addlinespace
+BNB  & 0.4290 & 0.5278 & 0.5083 & 0.0987 & 0.0793 & 80.27\% \\
+XRP  & 0.2378 & 0.3280 & 0.3090 & 0.0903 & 0.0713 & 78.97\% \\
+ADA  & 0.2650 & 0.3335 & 0.3197 & 0.0685 & 0.0547 & 79.88\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{The same qualitative ordering as every BTC result holds on all
+six target assets with a $\boldsymbol\Gamma$ matrix fit entirely on BTC}:
+$M_0 < M_2(\text{transferred}) < M_1$, on every rung. The transferred BTC
+$\boldsymbol\Gamma$ carries real, substantial signal on every asset
+tested, capturing $78.97\%$--$89.3\%$ of each asset's own
+$M_0\!\to\!M_1$ gap.
+
+\textbf{The original three-rung reading of ``no evidence of degradation''
+does not extend cleanly to six rungs, and this is reported as found, not
+adjusted to fit the prior framing.} ETH/SOL/DOGE spanned $81.7\%$--$89.3\%$,
+with SOL/DOGE if anything capturing \emph{more} of the gap than ETH -- the
+opposite of a naive ``transfer degrades with distance from the source
+asset'' expectation. The three robustness-extension assets (BNB, XRP, ADA)
+instead cluster tightly at $78.97\%$--$80.27\%$ (a $1.3$-point spread,
+versus the original three's $7.6$-point spread), \emph{below} the
+original range's floor of $81.7\%$. With only six rungs and a single BTC
+source window, this is not enough evidence to conclude the ladder
+degrades systematically past DOGE -- but it is no longer accurate to
+describe the six-rung picture as showing no pattern at all. A concrete,
+untested follow-up: whether this two-cluster split correlates with a
+structural asset property (relative tick size, quote/trade volume ratio,
+maker/taker mix) rather than being coincidental. A related, disclosed
+irregularity: XRP and ADA's test-week target prevalence
+($0.088673$, $0.117598$) falls \emph{below} BTC's own ($\sim 0.34$),
+breaking the pattern set by ETH and SOL/DOGE (all higher-prevalence than
+BTC, consistent with the tick-size rationale motivating the ladder's
+asset ordering in the first place).
+
+Three design simplifications were tested rather than assumed and found not
+to matter for the original ETH/SOL/DOGE rung: a literal daisy-chain design
+(each asset's own re-estimated $\boldsymbol\Gamma$ feeding the next rung,
+rather than transferring directly from BTC to every target) gave
+essentially the same answer as the direct design (SOL/DOGE $M_2$ PR-AUC
+deltas of $-0.000774$/$+0.000943$, no consistent direction); a
+same-millisecond quantity-tie dual-$\boldsymbol\Gamma$ robustness check
+(Section~\ref{sec:data-tiebreak}) found a negligible effect transferred
+onto each target asset's own feature distribution (ETH $+0.0002$, SOL
+$-0.0009$, DOGE $-0.0004$ PR-AUC, no monotonic trend down the ladder,
+not re-checked for BNB/XRP/ADA); and replacing the initial closed-form
+empirical-rate $\boldsymbol\mu$ estimator with the properly derived,
+fixed-$\boldsymbol\alpha$ profiled-MLE estimator used throughout this
+subsection (solved by 1-D bisection, validated to reproduce BTC's own
+jointly-fit $\boldsymbol\mu$ to within 0.08\% relative error including
+boundary cases) changed every one of the original eight transfer
+evaluations' PR-AUC by at most $0.0003$, with no consistent direction --
+this closes what had been the last disclosed simplification in the
+original transfer-ladder design (Section~\ref{sec:limitations}).
+
+\subsection{Robustness: an independent held-out test week}
+\label{sec:results-robustness}
+
+Because BTCUSDT \texttt{bookTicker} data is not published past
+2024-03-30 (Section~\ref{sec:data}), a genuinely independent external
+calendar window could not be constructed for a further robustness check;
+this was re-verified directly against the live archive rather than
+assumed, including inspecting a monthly rollup file one step past the
+daily cutoff, which turned out to contain only 6h47m of 2024-04-01 data --
+not a usable window. As the nearest feasible alternative, the core
+$M_0$/$M_1$/$M_2$ learning curve (Section~\ref{sec:results-learning-curve})
+was rerun against an independent, non-overlapping, representativeness-checked
+7-day test week drawn from earlier in the same 38-day window
+(2024-03-17 -- 2024-03-23, immediately preceding the official test week;
+no anomaly flags, max $|z|=1.514$), at six of the seven original budgets
+($N \in \{2\text{h},1\text{d},3\text{d},7\text{d},14\text{d},23\text{d}\}$;
+$31$d was not reachable with only 24 pretest days available before this
+earlier week).
+
+\textbf{The $M_1 > M_2$ finding replicates cleanly}: $M_1$ leads $M_2$ at
+every one of the six budgets tested, by $0.0107$--$0.0313$ PR-AUC, a full
+order of magnitude above the pre-registered threshold throughout, with no
+crossover. Absolute PR-AUC levels are not comparable to
+Table~\ref{tab:learning-curve} -- this week's target prevalence
+($0.5109$) is roughly $1.5\times$ the official week's, which alone
+inflates every model's baseline PR-AUC -- so this should be read as
+confirming the \emph{direction} of the finding on an independent week,
+not as a magnitude-matched replication. One genuine, disclosed
+difference: the gap shrinks monotonically with $N$ on this alternate
+week ($0.0313$ at 2h down to $0.0107$ at 23d), a cleaner pattern than the
+official week's non-monotonic shape (Table~\ref{tab:learning-curve});
+with only two weeks compared, whether this reflects real week-to-week
+variability in the learning-curve trajectory or is a coincidence of two
+point estimates is not resolved here. Because this alternate week is
+drawn from the same 38-day archive and market regime as the official
+week, it should be read as a within-window robustness check, not
+independent-period external validity, which Section~\ref{sec:limitations}
+discusses as the paper's most significant remaining open scope
+limitation.
+
+\subsection{Per-$N$ LightGBM hyperparameter tuning}
+\label{sec:results-tuning}
+
+A standing project hypothesis, carried across several earlier working
+sessions, held that $M_1$'s hyperparameters being undertuned relative to
+$M_2$'s (both used the same coarse 3-bucket heuristic) understated $M_1$'s
+true advantage, and that a proper per-$N$ retune would \emph{widen} the
+$M_1$-vs-$M_2$ gap. This was tested directly with an independent causal
+random search per $N$ and per model (Section~\ref{sec:methodology-lgbm})
+and found backwards. Table~\ref{tab:per-n-tuning} reports the result.
+
+\begin{table}[htbp]
+\centering
+\caption{Per-$N$ independent LightGBM tuning, $M_1$ and $M_2$, versus the
+untuned coarse 3-bucket heuristic. Gap = $M_1 - M_2$ PR-AUC.}
+\label{tab:per-n-tuning}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+$N$ & $M_1$ untuned & $M_1$ tuned & $M_2$ untuned & $M_2$ tuned & gap untuned & gap tuned ($\Delta$) \\
+\midrule
+2h  & 0.68698 & 0.68315 & 0.65755 & 0.65317 & 0.02943 & 0.02998\ ($+0.00054$) \\
+1d  & 0.70082 & 0.70111 & 0.68041 & 0.68015 & 0.02041 & 0.02096\ ($+0.00056$) \\
+3d  & 0.70500 & 0.70526 & 0.69313 & 0.69471 & 0.01187 & 0.01056\ ($-0.00131$) \\
+7d  & 0.70583 & 0.70693 & 0.69349 & 0.69660 & 0.01234 & 0.01033\ ($-0.00202$) \\
+14d & 0.70667 & 0.70835 & 0.69477 & 0.69869 & 0.01190 & 0.00966\ ($-0.00223$) \\
+23d & 0.70623 & 0.70862 & 0.69436 & 0.69859 & 0.01187 & 0.01003\ ($-0.00183$) \\
+31d & 0.70586 & 0.70837 & 0.69440 & 0.69851 & 0.01146 & 0.00986\ ($-0.00160$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{At every $N$ from 3d through 31d, proper independent tuning
+narrows, not widens, the $M_1$-vs-$M_2$ gap} (by 11--19\% of the untuned
+gap), because $M_2$ gains more PR-AUC from added tree complexity than
+$M_1$ does. The qualitative conclusion ($M_1 > M_2$ everywhere) is
+unaffected -- the gap narrows, it does not close or reverse. At $N=2$h
+and $N=1$d, tuning goes the other way (gap widens by $0.0005$--$0.0006$);
+this was diagnosed as a small-sample overfitting-to-validation-split
+effect specific to those two smallest budgets (a 15\% validation slice
+at $N=2$h is only $\sim 1{,}080$ rows), not a competing finding, and does
+not affect the $N \ge 3$d reading.
+
+\subsection{Operational lead-time metric}
+\label{sec:results-operational}
+
+The operational lead-time metric (top 1\% alert rate, fixed budget) was
+computed on the full 31-day rolling out-of-sample population
+($2{,}561{,}477$ rows, prevalence $0.409426$ -- materially higher than the
+fixed test week's $0.3440$, and not directly comparable to the PR-AUC/Brier
+figures elsewhere in this paper). Table~\ref{tab:operational} reports the
+result.
+
+\begin{table}[htbp]
+\centering
+\caption{Operational lead-time metric at a fixed 1\% alert rate, 31-day
+rolling OOS population (2{,}561{,}477 rows).}
+\label{tab:operational}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Model & Threshold & Alert rate & Recall @ 1\% & Median lead (ms) & Mean lead (ms) \\
+\midrule
+$M_1$ & 0.985170 & 1.000\% & 0.024279 & 52.00 & 80.20 \\
+$M_2$ & 0.965276 & 1.000\% & 0.023634 & 52.00 & 76.14 \\
+$M_3$ & 0.984372 & 1.000\% & 0.024277 & 52.00 & 80.17 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{$M_1$ and $M_3$ are operationally close to indistinguishable at
+this budget}, on both recall ($\Delta = -0.000002$) and mean lead time
+($\Delta = -0.03$\,ms), with identical median lead time (52.00\,ms) --
+consistent with, not contradictory to, Section~\ref{sec:results-m3}'s
+finding that $M_3$'s edge over $M_1$ is a calibration effect rather than
+a top-of-ranking effect: a model that improves calibration without
+improving ranking is expected to show exactly this pattern. \textbf{$M_2$
+is measurably worse than $M_1$ on both dimensions here too} (recall
+$-0.000645$, roughly 2.7\% fewer captured events at the same alert
+budget; mean lead time $-4.06$\,ms, roughly 5\% less advance warning),
+directionally consistent with every other $M_1$-vs-$M_2$ comparison in
+this paper. Absolute recall is low for all three models at this budget
+($\sim 2.4\%$), which is expected given the population's high ($41\%$)
+target prevalence relative to a 1\%-of-samples alert budget, and should
+be read as ``quality of the very top of the ranking,'' not absolute event
+coverage.

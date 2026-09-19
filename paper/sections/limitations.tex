@@ -1,0 +1,183 @@
+\section{Limitations}
+\label{sec:limitations}
+
+\subsection{Single 38-day calendar window, single exchange}
+\label{sec:limitations-window}
+
+This is the project's own most-flagged open item and is stated
+explicitly rather than left implicit. Every result in this paper
+describes BTCUSDT (and, for the transfer ladder, ETH/SOL/DOGE USDT)
+perpetual-futures microstructure on Binance during a single 38-day
+calendar window, 2024-02-22 -- 2024-03-30. No claim in this paper should
+be read as asserting that market microstructure dynamics are
+time-invariant, or that the specific magnitudes reported (the
+$M_1$-vs-$M_2$ PR-AUC gap, the branching-ratio values, the transfer
+ladder's captured-gap percentages) generalize to other calendar periods,
+volatility regimes, or exchanges without further testing. This is a
+standard scope limitation for microstructure econometrics, not a defect
+specific to this study, but it bears directly on external validity: the
+mechanisms studied here -- order-flow clustering, cross-excitation
+between quote and trade events, queue depletion -- are not expected to
+have fundamentally changed in kind since early 2024, but their exact
+parameterization (kernel weights, branching ratios, the $M_1$-vs-$M_2$
+PR-AUC gap magnitude) should not be assumed stable across different
+market regimes (e.g.\ markedly higher or lower realized volatility, a
+different funding-rate environment, or a different exchange's matching
+engine and tick-size conventions) without a fresh fit. The
+window itself was not a free choice: it is bounded on the recent end by
+Binance's permanent discontinuation of the \texttt{bookTicker} feed for
+BTCUSDT futures after 2024-03-30 (Section~\ref{sec:data-feeds}), so a
+more recent replication under the identical protocol is not currently
+possible against this exact data source. This was re-checked directly
+rather than assumed stale: as of 2026-09-18 the live archive still lists
+nothing past 2024-03-30, including a monthly rollup file one step past
+the daily cutoff that turned out to contain only 6h47m of 2024-04-01
+data. As the nearest feasible substitute, Section~\ref{sec:results-robustness}
+reruns the core learning curve against an independent, non-overlapping
+test week drawn from \emph{within} the same 38-day window and finds the
+same $M_1>M_2$ result -- a within-window robustness check that
+corroborates the finding's stability inside this window, but does not,
+and cannot, speak to external validity across a genuinely different
+calendar period or market regime.
+
+\subsection{The excluded 2024-02-04 -- 2024-02-21 disorder window}
+\label{sec:limitations-disorder}
+
+A full-coverage audit of the originally planned 60-day window found
+severe raw \texttt{bookTicker} ordering disorder between 2024-02-04 and
+2024-02-21 -- on some days in this range, up to $\sim$40\% of a day's
+rows showed a \texttt{transaction\_time} decrease relative to the
+previous row (e.g.\ 18{,}728{,}015 of 46{,}396{,}761 rows on 2024-02-12),
+a scale of disorder far beyond isolated same-millisecond ties that the
+project's standard defensive sort (by \texttt{transaction\_time}, then
+\texttt{update\_id}) produces \emph{a} valid-looking chronological order
+for, but whose recovery of the \emph{true} underlying order at this scale
+of scrambling was never independently verified. This 18-day span was
+excluded from the primary window entirely rather than included with an
+unverified repair, and no Hawkes fit, learning-curve point, or any other
+result in this paper touches it. This is a conservative, disclosed
+exclusion, not a silent gap: the resulting 38-day window is the largest
+\emph{contiguous, independently re-audited clean} span available between
+the resolved end of this disorder period (2024-02-22, confirmed via a
+zero-raw-decrease re-audit) and the permanent \texttt{bookTicker}
+discontinuation (2024-03-30). Whether the excluded period's underlying
+market dynamics (which, unlike the archive's row ordering, were not
+inherently anomalous) would change any of this paper's findings if
+recovered and independently validated is untested and remains open.
+
+\subsection{Cross-machine Hawkes non-bit-reproducibility}
+\label{sec:limitations-reproducibility}
+
+Several results in this paper (e.g.\ Table~\ref{tab:m3-comparison}'s
+$M_2$ column differing from Table~\ref{tab:learning-curve} by
+$\sim 0.0001$--$0.0002$ PR-AUC at every $N$, despite an identical
+specification) reflect a finding that was itself investigated and
+resolved during the project: the unconstrained L-BFGS-B Hawkes fit used
+throughout this paper is \emph{not} bit-reproducible across different
+machines or software environments, even at an identical fixed random
+seed, identical data, and identical code -- most likely due to different
+BLAS/LAPACK builds shifting the optimizer's floating-point trajectory.
+This was distinguished directly from true non-determinism: two
+back-to-back reruns of an identical 100{,}000-event calibration budget
+\emph{on the same machine} were confirmed bit-identical to full displayed
+precision, while the same specification run on a different machine in an
+earlier session differed by up to $0.0016$ PR-AUC -- roughly an order of
+magnitude larger than the previously assumed ``run-to-run noise floor''
+of $\sim0.0001$--$0.0002$, which in retrospect was itself cross-machine
+noise mislabeled as generic non-determinism. LightGBM fits ($M_0$/$M_1$,
+which never call the Hawkes optimizer) reproduce exactly across every
+run and every machine used in this project, at every reported precision.
+Every cross-model or cross-configuration \emph{comparison} reported in
+this paper (e.g.\ every $\Delta$ column, every GW statistic) uses model
+outputs produced within a single run on a single machine, so this
+non-reproducibility does not threaten any comparison's internal validity;
+it does mean that a reader attempting to reproduce an individual $M_2$ or
+$M_3$ PR-AUC figure to full displayed precision on different hardware
+should expect a difference on the order of $10^{-4}$--$10^{-3}$, not
+bit-exact agreement, and any future rerun on a \emph{single, fixed}
+machine should reproduce exactly -- a discrepancy under those specific
+conditions would indicate a real bug, not expected Hawkes noise.
+
+\subsection{Transfer-ladder simplifications, resolved}
+\label{sec:limitations-transfer}
+
+The cross-asset transfer ladder (Section~\ref{sec:results-transfer}) was
+disclosed, when first built, as resting on three simplifications relative
+to the specification's stated protocol: transferring the full
+$10\times10\times5$ excitation tensor rather than only the collapsed
+branching-ratio matrix (a strict superset of what is needed, not a
+simplification against the protocol); estimating the target asset's
+baseline intensity $\boldsymbol\mu$ via a closed-form empirical rate
+rather than a properly profiled maximum-likelihood re-estimation under
+the fixed, transferred $\boldsymbol\alpha$; and transferring BTC's
+$\boldsymbol\Gamma$ directly to each of ETH, SOL, and DOGE rather than
+through a literal daisy chain (each asset's own re-estimated
+$\boldsymbol\Gamma$ feeding the next rung). All three were subsequently
+tested directly rather than left as caveats. The literal daisy chain was
+built and evaluated and produced results within $0.0008$--$0.0009$ PR-AUC
+of the direct-transfer design, with no consistent direction. A proper
+fixed-$\boldsymbol\alpha$, profiled-$\boldsymbol\mu$ estimator (solved by
+one-dimensional bisection, including an explicit boundary-clamp case
+validated against the joint MLE's own boundary solutions to within
+0.08\% relative error) was implemented and used to rerun every transfer
+evaluation; every resulting PR-AUC changed by at most $0.0003$, with no
+consistent direction across the eight cases tested. \textbf{These
+simplifications are therefore resolved, not open}: the transfer-ladder
+results reported in Section~\ref{sec:results-transfer} and
+Table~\ref{tab:transfer-synthesis} reflect the originally disclosed
+simplified design, and this subsection records that a substantially more
+faithful re-implementation of the specified protocol was subsequently
+confirmed to change nothing materially. What remains genuinely untested
+for the transfer ladder is orthogonal to these three points: only one
+BTC source calibration window was ever used as the transfer origin, and
+no formal significance test (Giacomini--White or Romano--Wolf) was run on
+any transfer rung -- every transfer number in this paper is a single
+train/test point estimate on its target asset, unlike the BTC-only
+results elsewhere in this paper, which are corroborated by a formal
+rolling test. A further robustness extension to three more assets
+(BNB, XRP, ADA, Section~\ref{sec:results-transfer}) also revealed a
+new, unresolved question rather than only confirming the original
+finding: those three rungs cluster $1.3$ percentage points apart at
+$78.97\%$--$80.27\%$ gap-capture, below the original three-asset range's
+floor of $81.7\%$, and the qty-tie dual-$\boldsymbol\Gamma$ check above
+was not repeated for them. Whether this reflects a structural property
+of the newly added assets or is a coincidence of six single-window,
+single-source point estimates is not resolved in this paper.
+
+\subsection{Other disclosed scope decisions}
+\label{sec:limitations-other}
+
+A small number of additional scope decisions were made explicitly during
+the project and are recorded here for completeness rather than treated
+as open questions requiring resolution in this paper. The post-hoc
+stationarity projection (Section~\ref{sec:methodology-hawkes}) was
+retained rather than replaced with an in-fit constraint, on the basis of
+an empirical scan across 185 fits in which the projection essentially
+never bound, later found to bind in exactly one hourly window that traces
+to a known, pre-existing \texttt{bookTicker} data gap
+(2024-03-08) rather than to a general large-$N$ property; the affected
+window contributes 0.116\% of the $N=31$d training rows and a $0.47\%$
+coefficient-level rescale for that one hour. A residual $8.4\%$
+tie-order sensitivity in the fitted $\boldsymbol\Gamma$ matrix, after
+masking the dominant same-millisecond touch-price/trade ambiguity
+(Section~\ref{sec:data-tiebreak}), was traced to a narrower, disclosed
+class of same-millisecond quantity-only quote/trade ties (6.35\% of
+events) that the current masking scope does not cover; this scope
+decision was made explicitly and re-reviewed (and reconfirmed adequate)
+before both the $M_3$ build and the transfer ladder, each of which
+consumes $\boldsymbol\Gamma$ in a different way. The difference-in-differences
+placebo control specified for validating $M_3$'s structural claim
+(Section~\ref{sec:methodology-placebo}) was not run in this study: given
+$M_3$'s null PR-AUC result on the Primary Endpoint
+(Section~\ref{sec:results-m3}), it was judged to have comparatively
+little to falsify at the time relative to isolating the source of $M_3$'s
+subsequently discovered calibration effect via ablation, which was run
+instead and is reported in Section~\ref{sec:results-m3-ablation}; running
+the placebo control against the calibration effect specifically (rather
+than the null PR-AUC result it was originally scoped against) remains a
+natural next step. Finally, the secondary/exploratory grid's
+\texttt{target\_a} implementation does not take a depletion-fraction
+argument, so the nominal 18 named specifications in
+Table~\ref{tab:romano-wolf} contain only 12 distinct tests; this is a
+codebase quirk disclosed at the time it was discovered, not silently
+corrected, and all 18 named columns are reported as specified.

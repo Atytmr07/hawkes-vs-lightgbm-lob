@@ -1,0 +1,41 @@
+Copyright (c) 2026, the author(s) of this repository. All rights reserved
+except as expressly granted below.
+
+This work (all source code, documentation, STATUS/PROJECT_SPEC files, and
+paper/ contents in this repository) is licensed under the Creative Commons
+Attribution-NonCommercial-NoDerivatives 4.0 International License (CC BY-NC-ND 4.0).
+
+You are free to:
+  - Share: copy and redistribute the material in any medium or format,
+
+for any purpose other than commercially, and only unmodified, as long as
+you give appropriate credit, provide a link to the license, and indicate
+if changes were made (you may not do so in any way that suggests the
+licensor endorses you or your use).
+
+Under the following terms:
+  - Attribution   -- You must give appropriate credit to the original
+                      author(s), provide a link to the license, and
+                      indicate if changes were made.
+  - NonCommercial -- You may not use the material for commercial purposes.
+  - NoDerivatives -- If you remix, transform, or build upon the material,
+                      you may not distribute the modified material.
+  - No additional restrictions -- You may not apply legal terms or
+                      technological measures that legally restrict others
+                      from doing anything the license permits.
+
+No warranties are given. The license may not give you all of the
+permissions necessary for your intended use. For example, other rights
+such as publicity, privacy, or moral rights may limit how you use the
+material.
+
+Full legal code: https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode
+Human-readable summary: https://creativecommons.org/licenses/by-nc-nd/4.0/
+
+---
+
+This repository accompanies ongoing pre-thesis academic research. If you
+wish to use, cite, extend, or build on this work beyond what CC BY-NC-ND
+4.0 permits (e.g., for research collaboration or commercial use), please
+contact the author(s) directly rather than forking and republishing a
+modified version.

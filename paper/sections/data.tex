@@ -1,0 +1,206 @@
+\section{Data}
+\label{sec:data}
+
+\subsection{Instrument, feeds, and the bookTicker discontinuation constraint}
+\label{sec:data-feeds}
+
+The primary instrument is \texttt{BTCUSDT} on Binance USD-margined
+perpetual futures (\texttt{futures/um/daily/}). Two raw public feeds are
+used: unaggregated \texttt{trades} (individual execution ticks, not the
+\texttt{aggTrades} feed, which collapses simultaneous fills and would
+destroy the clustering signal the Hawkes process is meant to measure) and
+\texttt{bookTicker} (L1 best-bid/best-ask updates). Both feeds are ordered
+on \texttt{transaction\_time} (\texttt{T}), not \texttt{event\_time}
+(\texttt{E}), since the latter includes Binance's own engine push
+latency and is not a reliable causal ordering key.
+
+The data window is constrained by a permanent upstream limitation:
+Binance stopped publishing \texttt{futures/um/daily/bookTicker/BTCUSDT}
+after \textbf{2024-03-30}. This is documented in the
+\texttt{binance-public-data} public GitHub repository (Issue \#372, filed
+November 2024) and remained open and unresolved as of the most recent
+check (August 2026, 20+ months after filing) -- it is treated in this
+paper as a permanent, not transient, constraint, and rules out any
+attempt to use a more recent window. The \texttt{trades} feed itself
+remains continuous and current; only \texttt{bookTicker} is affected.
+Separately, Binance's own archive is documented (Issue \#305) to have
+shipped BTC/ETH \texttt{bookTicker} daily files \emph{out of sequence}
+during Jan--Mar 2024, so no assumption of pre-sorted archive files is
+made anywhere in the pipeline; all downstream processing sorts explicitly
+by \texttt{(transaction\_time, update\_id)} before any diff-based
+computation.
+
+\subsection{The 38-day primary window}
+\label{sec:data-window}
+
+An initial full-coverage audit surfaced severe raw ordering disorder in
+\texttt{bookTicker} between 2024-02-04 and 2024-02-21 -- on some days in
+this range, up to $\sim$40\% of a day's rows exhibited a
+\texttt{transaction\_time} decrease relative to the previous row (e.g.\
+18{,}728{,}015 of 46{,}396{,}761 rows on 2024-02-12), a scale of disorder
+far beyond isolated same-millisecond ties. An independent re-audit
+confirmed that raw ordering disorder ends precisely at 2024-02-21 --
+2024-02-22 onward shows zero raw \texttt{transaction\_time} decreases.
+The primary study window is therefore fixed to
+\[
+  \textbf{2024-02-22 -- 2024-03-30 (38 calendar days)},
+\]
+the last available continuous window before the \texttt{bookTicker}
+discontinuation and after the resolved disorder period. An independent
+re-audit of this exact window (38 days, $875{,}126{,}040$ raw
+\texttt{bookTicker} rows) found \emph{zero} adjacent
+\texttt{transaction\_time} decreases, zero same-millisecond
+\texttt{update\_id} regressions, and zero invalid-day rows across every
+one of the 38 days. Two days retain known, small activity gaps --
+2024-02-28 (largest interval 17:32:13--18:15:20 UTC, 2{,}587 seconds
+inactive) and 2024-03-08 (largest interval 16:03:08--17:09:20 UTC,
+3{,}972 seconds inactive) -- totaling roughly two hours ten minutes of
+real inactivity across the entire 38-day window; every other day is
+100.000\% or near-100.000\% active on a 1-second-bin coverage measure.
+The excluded 2024-02-04--02-21 disorder window is discussed further as a
+scope limitation in Section~\ref{sec:limitations}.
+
+Raw input over the primary window totals $196{,}875{,}099$
+\texttt{trades} rows and $875{,}126{,}040$ \texttt{bookTicker} rows
+($1{,}072{,}001{,}139$ raw rows combined). After causal alignment and
+classification into the 10-event taxonomy of
+Section~\ref{sec:data-taxonomy} -- which collapses redundant,
+same-direction consecutive \texttt{bookTicker} updates into single typed
+transitions -- the aligned event stream contains
+\[
+  \mathbf{1{,}053{,}434{,}969}\ \text{typed events}: \quad 196{,}875{,}099\ \text{trades} + 856{,}559{,}870\ \text{emitted quote events},
+\]
+with zero unclassified quote transitions on every one of the 38 days.
+This just over one billion typed events is the number referred to
+throughout the paper as the primary window's event volume.
+
+\subsection{The 10-event microstructure taxonomy}
+\label{sec:data-taxonomy}
+
+Every raw quote or trade transition is mapped to exactly one of ten
+mutually exclusive event types, with residual cancellation volume at
+price level $p$ defined as
+\[
+  V_{\text{cancel}}(p) = \max\!\big(0,\ -\Delta Q(p) - V_{\text{trade}}(p)\big).
+\]
+
+\begin{center}
+\begin{tabular}{@{}cll@{}}
+\toprule
+\# & Event type & Definition \\
+\midrule
+1 & \texttt{bid\_qty\_up}    & bid price unchanged, $\Delta Q_b > 0$ \\
+2 & \texttt{bid\_qty\_down}  & bid price unchanged, $V_{\text{cancel}}(P_b) > 0$ \\
+3 & \texttt{bid\_price\_up}   & bid price increases (spread narrowing / price improvement) \\
+4 & \texttt{bid\_price\_down} & bid price decreases (queue depletion / spread widening) \\
+5 & \texttt{ask\_qty\_up}    & ask price unchanged, $\Delta Q_a > 0$ \\
+6 & \texttt{ask\_qty\_down}  & ask price unchanged, $V_{\text{cancel}}(P_a) > 0$ \\
+7 & \texttt{ask\_price\_up}   & ask price increases (queue depletion / spread widening) \\
+8 & \texttt{ask\_price\_down} & ask price decreases (spread narrowing / price improvement) \\
+9 & \texttt{trade\_buy}      & aggressive buyer-initiated fill \\
+10 & \texttt{trade\_sell}     & aggressive seller-initiated fill \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Table~\ref{tab:event-counts} gives the exact event-type counts over the
+full 38-day aligned stream.
+
+\begin{table}[htbp]
+\centering
+\caption{Event-type counts, 38-day aligned stream (2024-02-22 -- 2024-03-30).}
+\label{tab:event-counts}
+\begin{tabular}{@{}lr@{}}
+\toprule
+Event type & Count \\
+\midrule
+\texttt{bid\_qty\_up}    & 258{,}877{,}869 \\
+\texttt{bid\_qty\_down}  & 151{,}038{,}105 \\
+\texttt{bid\_price\_up}   & 10{,}624{,}783 \\
+\texttt{bid\_price\_down} & 8{,}142{,}038 \\
+\texttt{ask\_qty\_up}    & 258{,}664{,}686 \\
+\texttt{ask\_qty\_down}  & 150{,}541{,}519 \\
+\texttt{ask\_price\_up}   & 8{,}303{,}725 \\
+\texttt{ask\_price\_down} & 10{,}367{,}145 \\
+\texttt{trade\_buy}      & 98{,}416{,}666 \\
+\texttt{trade\_sell}     & 98{,}458{,}433 \\
+\midrule
+\textbf{Total} & \textbf{1{,}053{,}434{,}969} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Timestamp alignment and the tie-break causality sensitivity check}
+\label{sec:data-tiebreak}
+
+Sub-millisecond ties within a single feed are broken by a deterministic
+micro-jitter; within \texttt{bookTicker}, exact-\texttt{transaction\_time}
+ties are further broken by \texttt{update\_id} before falling back to
+arrival order. The default cross-feed ordering convention on an
+exact-millisecond tie between the two feeds is \texttt{trades\_first}
+(trade ordered before a same-millisecond \texttt{bookTicker} update).
+Because this convention is an arbitrary modeling choice rather than a
+directly observable fact about true event order, every Hawkes cross-excitation
+result is subjected to a mandatory causality sensitivity check: the
+Primary Endpoint and the fitted branching-ratio matrix
+$\boldsymbol{\Gamma}$ are recomputed under the inverted rule,
+\texttt{book\_first}, and compared.
+
+On the sample day used for initial data inspection (2024-03-30),
+exact-millisecond trade/\texttt{bookTicker} collisions accounted for
+7.99\% of all quote timestamps (372{,}815 collisions that day), confirming
+the sensitivity check is not a minor edge case. At $N=3$d on the 38-day
+window, the initial (subsequently found to be confounded, see below)
+sensitivity run found $M_2$ PR-AUC of $0.6805835954$ under
+\texttt{book\_first} versus $0.6923842563$ under \texttt{trades\_first} --
+a difference of $-0.01180066091$ -- while $M_1$ and $M_0$ were essentially
+unaffected ($\Delta M_1 = +0.0008535961$, $\Delta M_0 = 0$). The
+branching-ratio matrix $\boldsymbol{\Gamma}$ itself changed far more than
+the downstream PR-AUC: $43.67\%$ relative Frobenius-norm change, with
+$89.22\%$ of the squared change concentrated in the quote$\to$trade
+block -- physically, in the same-millisecond touch-price/trade pairs
+where the tie rule directly determines whether a touch-price move or the
+paired trade is treated as causally prior.
+
+A follow-up investigation isolated this effect more cleanly by holding
+the event multiset exactly fixed under an ordering-only inversion (rather
+than re-running the full aligner, which also changes trade-volume
+attribution at qty-tie edges and confounds ordering with event-typing
+effects). Under this cleaner order-only design, the pure tie-order effect
+on $\boldsymbol{\Gamma}$ was found to be \emph{larger}, not smaller, than
+the original confounded estimate ($61.9\%$ relative Frobenius change,
+unmasked), concentrated almost entirely (95\% of squared change) in an
+``ignition'' artifact: trades acquire large, spurious self-exciting
+coefficients from touch-price events that previously sat strictly before
+them at the same timestamp. Masking same-millisecond touch-price/trade
+ties out of the Hawkes calibration (\texttt{mask\_touch\_trade}) reduces
+this to an $8.4\%$ residual, itself attributable to a disclosed,
+narrower and unmasked class of same-millisecond quantity-only quote/trade
+ties (6.35\% of all events) whose effect propagates into the
+quote$\to$quote block via ordinary multicollinearity in the joint
+per-target regression, rather than a defect in the masking logic itself.
+Across every configuration tested, the downstream PR-AUC sensitivity of
+the pure order-only, masked comparison shrank to $-0.0002365$, roughly
+$50\times$ smaller than the original confounded $-0.0118$ figure and
+comparable in magnitude to this project's own documented run-to-run
+numerical noise floor (Section~\ref{sec:limitations}). The full
+investigation, decision log, and its extension to the cross-asset
+transfer setting are summarized further in
+Sections~\ref{sec:results-transfer} and~\ref{sec:limitations}.
+
+\subsection{Fixed test-week representativeness}
+\label{sec:data-testweek}
+
+The learning-curve test set (Section~\ref{sec:methodology}) is fixed to
+the final calendar week of the primary window, 2024-03-24 -- 2024-03-30
+(a full Sunday-through-Saturday week, guaranteeing all weekdays, one
+weekend, and three full 8-hour funding cycles per day regardless of
+anchor point). This choice was checked, not assumed: every daily metric
+in the test week (trade row count, quote notional, realized volatility,
+\texttt{bookTicker} row count, aligned event count) was compared against
+the pre-test-week distribution (2024-02-22 -- 2024-03-23) using a robust
+$z$-score, $z = (x - \mathrm{median})/(1.4826\,\mathrm{MAD})$, with an
+ex-ante flag threshold of $|z| > 3.5$. No test-week observation was
+flagged (\texttt{test\_week\_anomalous=false}); the largest absolute
+robust $z$-score observed was $2.424538$, for aligned-event count on
+2024-03-30.

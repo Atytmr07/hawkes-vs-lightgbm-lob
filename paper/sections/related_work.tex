@@ -1,0 +1,185 @@
+\section{Related Work}
+\label{sec:related-work}
+
+This section situates the present study relative to four bodies of prior
+work: Hawkes processes in market microstructure, limit-order-book (LOB)
+queue-position and queue-depletion modeling, machine-learning approaches
+to LOB forecasting, and the small literature that compares parametric
+point-process models against machine-learned forecasts directly. A fifth
+subsection covers the statistical-testing methodology this paper relies
+on. Every citation below was independently verified to exist (arXiv,
+publisher, SSRN, or Semantic Scholar listing) before inclusion; where a
+bibliographic detail such as venue or peer-review status could not be
+confirmed, this is noted explicitly rather than presented as certain.
+
+\subsection{Hawkes processes in market microstructure}
+\label{sec:rw-hawkes}
+
+Multivariate Hawkes processes are a standard tool for modeling
+self-exciting order-flow clustering in financial markets;
+\citet{bacry2015hawkes} survey the framework broadly, including
+volatility estimation, market stability, contagion, and full
+order-book dynamics, and this paper's 10-event marked multivariate
+Hawkes process with exponential kernels and a branching-ratio
+subcriticality constraint (Section~\ref{sec:methodology-hawkes}) is a
+direct descendant of that framework. \citet{bowsher2007modelling}
+introduces ``generalised Hawkes'' models for market events allowing
+inhibitory effects and cross-day dependence, an early instance of the
+same modeling stance taken here -- treating quote and trade events as a
+multivariate point process with a full intensity vector, rather than a
+single univariate arrival process. \citet{hewlett2006clustering} applies
+a bivariate Hawkes process to buy/sell trade arrivals in FX to predict
+imbalance, a narrower ancestor of the 10-event taxonomy of
+Section~\ref{sec:data-taxonomy} (workshop presentation, not confirmed as
+peer-reviewed). \citet{bormetti2015modelling} uses multivariate Hawkes
+factor models to capture cojumps across correlated assets, a precedent
+for using a shared or constrained Hawkes structure to transport
+excitation information across instruments -- directly relevant to the
+cross-asset transfer ladder of Section~\ref{sec:results-transfer}, which
+transfers a compressed parametric object ($\boldsymbol\Gamma$) across
+BTC, ETH, SOL, and DOGE rather than pooling raw training data.
+
+Two papers bear directly on the near-critical branching-ratio values
+observed in this study ($\rho(\boldsymbol\Gamma) \in [0.93, 0.98]$
+throughout Table~\ref{tab:learning-curve}).
+\citet{hardiman2013critical} finds that price-change Hawkes kernels on
+S\&P E-mini data (1998--2011) are close to criticality (branching ratio
+$\approx 1$) as a persistent stylized fact, consistent with this paper's
+own measured range rather than suggesting a calibration artifact. Set
+against that, \citet{filimonov2015apparent} warns that regime mixtures
+and poor timestamp quality can produce \emph{spuriously} high estimated
+branching ratios -- ``apparent criticality'' where the true value is
+substantially lower -- a methodological caution directly relevant to
+this paper's own tie-break causality sensitivity finding
+(Section~\ref{sec:data-tiebreak}): the large swings in
+$\boldsymbol\Gamma$'s Frobenius norm under alternative same-millisecond
+tie-break conventions are exactly the kind of calibration fragility
+\citeauthor{filimonov2015apparent} describe, which motivated reporting
+tie-rule sensitivity explicitly rather than a single point estimate for
+$\boldsymbol\Gamma$.
+
+\subsection{Limit-order-book queue-position and queue-depletion modeling}
+\label{sec:rw-lob}
+
+\citet{cont2014price} shows that order-flow imbalance (OFI) at the best
+quotes has an approximately linear relationship with short-horizon price
+changes across a broad cross-section of NYSE stocks -- the direct
+ancestor of this paper's $M_0$ baseline feature
+(Section~\ref{sec:methodology-ladder}), and consistent with $M_0$ alone
+already reaching PR-AUC $\approx 0.63$ on the fixed test week
+(Table~\ref{tab:learning-curve}). \citet{gould2016queue} similarly finds
+L1 bid/ask queue imbalance to be a strong, near-linear predictor of the
+next tick move, particularly for large-tick instruments, supporting this
+paper's inclusion of absolute queue sizes and rolling percentile rank in
+$M_0$. \citet{huang2015simulating} models the LOB as a Markov
+queuing system whose event intensities depend on current queue state --
+the closest prior framework to this paper's Target B (pure depth
+depletion), though a state-Markovian rather than history-Hawkes
+formulation: where \citet{huang2015simulating} conditions intensities on
+current depth, $M_2$ here instead conditions on recent \emph{event
+history} via self- and cross-excitation, a complementary rather than
+competing account of the same phenomenon.
+\citet{moallemi2017queue} models the economic value of queue position via
+a cancellation intensity increasing in queue size, an antecedent of this
+paper's \texttt{*\_qty\_down} cancellation-volume event types
+(Section~\ref{sec:data-taxonomy}) (working paper; no confirmed
+peer-reviewed publication located).
+
+\subsection{Machine learning for LOB forecasting}
+\label{sec:rw-ml}
+
+$M_1$'s design -- an unconstrained gradient-boosted-tree model on a
+hand-engineered multi-scale event-count feature bank -- sits within an
+established line of ML-for-LOB work. \citet{kercheval2015modelling} is an
+early instance using multi-class SVMs on LOB-level attributes to predict
+mid-price direction, which $M_1$ updates with a modern nonlinear tree
+ensemble. \citet{ntakaris2018benchmark} establishes the widely used
+FI-2010 benchmark (10 days, 5 Nasdaq Nordic stocks, $\sim$4M samples,
+3-class up/stationary/down labels), against which this paper's own
+labeling protocol departs in kind: Target A/B
+(Section~\ref{sec:methodology-target}) predicts depletion and
+adverse-move \emph{events} specifically, rather than the field's dominant
+3-class mid-price-direction convention. \citet{zhang2019deeplob} (DeepLOB)
+and \citet{wallbridge2020translob} (TransLOB, arXiv preprint, no
+confirmed peer-reviewed venue located) represent the deep-learning and
+attention-based ends of the same ``unconstrained representation
+learning'' side of this paper's central contrast; this paper uses
+LightGBM rather than a CNN/LSTM/Transformer as its free-model baseline, a
+defensible and considerably cheaper stand-in at this paper's much finer
+L1/event-level (rather than book-snapshot-image) granularity.
+\citet{sirignano2019universal} shows a pooled, multi-stock LSTM
+outperforms asset-specific models and generalizes to held-out stocks --
+evidence for a ``universal,'' data-learnable price-formation mechanism
+along a different transfer axis than this paper's own cross-asset
+transfer ladder (Section~\ref{sec:results-transfer}): where
+\citeauthor{sirignano2019universal} pool raw training data across
+instruments into one free model, this paper instead transfers a
+compressed parametric object ($\boldsymbol\Gamma$) and re-profiles only
+the local baseline intensity and marks.
+
+\subsection{Direct comparisons of parametric point-process and ML forecasts}
+\label{sec:rw-comparison}
+
+This is the category where the literature search found the least direct
+overlap with the present paper's research question, and that gap is
+reported here rather than papered over with a loose fit. No paper was
+located that runs the same head-to-head this paper runs: a constrained,
+MLE-fit multivariate Hawkes process against an unconstrained tree
+ensemble, on identical LOB targets and an identical underlying feature
+basis, under a formal walk-forward significance protocol. The closest
+matches found are as follows. \citet{shi2022state} builds a \emph{hybrid}
+neural-Hawkes model (continuous-time LSTMs modeling per-event-type
+intensities plus an event-state interaction mechanism) and reports it
+outperforms both pure-stochastic and pure-deep-learning baselines on LOB
+event-stream prediction -- the closest published instance of a controlled
+Hawkes-vs-ML comparison found, but a fusion study arguing that
+\emph{combining} the two architectures wins, not a controlled test of
+whether the parametric constraint itself generalizes better, which is
+this paper's question. \citet{nitturanantha2026forecasting} reports that
+a sum-of-exponentials Hawkes process gives the best forecast among
+unspecified ``competing models'' for near-term order-flow-imbalance
+forecasting on NSE tick data; whether its competitor set includes
+tree-ensemble or deep-learning baselines could not be confirmed from the
+publicly available abstract, so this paper does not claim it as a
+confirmed ML comparison. \citet{mei2017neural} is the foundational
+neural-Hawkes paper underlying the line of work
+\citeauthor{shi2022state} build on (not finance-specific); it is relevant
+background for why $M_2$ in this paper is deliberately kept fully
+parametric (closed-form exponential kernels, explicit MLE, explicit
+$\boldsymbol\Gamma$) rather than neuralized -- a neural Hawkes intensity
+would no longer isolate the specific falsification-first question this
+paper asks (Section~\ref{sec:intro-falsification}), namely whether the
+parametric \emph{constraint itself} helps or hurts generalization.
+
+In summary: the literature contains many papers on parametric Hawkes
+processes for order flow, many papers on ML/deep learning for LOB
+prediction, and a small number of hybrid fusion papers showing that
+combining the two architectures outperforms either alone. What is
+largely absent is a paper that holds the prediction target and the
+free-model architecture fixed and asks, as this paper does, whether a
+Hawkes-constrained feature representation regularizes better than letting
+a tree see the same raw feature bank directly -- an ablation-style
+comparison rather than an architecture-fusion or bake-off study. The
+learning-curve crossover search of Section~\ref{sec:results-learning-curve}
+appears to be a genuinely underexplored angle on the Hawkes-vs-ML
+question relative to the literature surveyed here.
+
+\subsection{Statistical methodology}
+\label{sec:rw-methodology}
+
+The rolling Giacomini--White protocol used throughout
+(Section~\ref{sec:methodology-gw}) is a direct application of
+\citet{giacomini2006tests}, which extends Diebold--Mariano/West-style
+predictive-ability testing to settings where forecasting models are
+estimated or re-estimated on a rolling basis and potentially
+misspecified -- exactly the walk-forward, daily-re-estimation design this
+paper's GW tests use (Sections~\ref{sec:results-gw}
+and~\ref{sec:results-m3-gw}). The Romano--Wolf stepdown FWER control
+across the 18-specification secondary grid
+(Section~\ref{sec:results-secondary-grid}) follows
+\citet{romano2005stepwise}, which frames stepdown multiple-testing
+control explicitly around the data-snooping problem in empirical finance
+(many strategies or specifications tested on the same data), together
+with the companion methodological paper \citet{romano2005exact}
+developing the underlying exact/approximate stepdown procedures; the two
+are standard to cite jointly, as is done here.
